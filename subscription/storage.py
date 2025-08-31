@@ -3,19 +3,13 @@ import os
 import logging
 from datetime import datetime
 from typing import List, Optional, Dict
-from .manager import Subscription
+from .models import Subscription  # 从models导入，而非从manager导入
 
 class SubscriptionStorage:
     """订阅存储管理器，支持内存存储和JSON文件存储"""
     
     def __init__(self, config, storage_type: str = "json"):
-        """
-        初始化存储管理器
-        
-        Args:
-            config: 配置对象，需包含存储路径等信息
-            storage_type: 存储类型，"memory" 或 "json"
-        """
+        """初始化存储管理器"""
         self.logger = logging.getLogger(__name__)
         self.storage_type = storage_type
         self.subscriptions: Dict[int, Subscription] = {}
@@ -23,7 +17,7 @@ class SubscriptionStorage:
         
         # 配置JSON存储
         if storage_type == "json":
-            self.storage_path = config.get("subscription_storage_path", "subscriptions.json")
+            self.storage_path = config.get("subscription.storage_path", "subscriptions.json")
             self._load_from_json()
         else:
             self.storage_path = None
@@ -202,4 +196,3 @@ class SubscriptionStorage:
     def get_all_subscriptions(self) -> List[Subscription]:
         """获取所有订阅"""
         return list(self.subscriptions.values())
-    

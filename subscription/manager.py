@@ -1,19 +1,8 @@
 import logging
 from datetime import datetime
 from typing import List, Optional
-from dataclasses import dataclass
+from .models import Subscription  # 从models导入，而非直接引用
 from .storage import SubscriptionStorage
-
-@dataclass
-class Subscription:
-    """订阅信息类"""
-    id: int
-    repository: str  # 格式为 "owner/repo"
-    subscribers: List[str]  # 订阅者邮箱列表
-    last_checked: datetime
-    created_at: datetime
-    daily_updates: bool = True
-    weekly_report: bool = True
 
 class SubscriptionManager:
     """订阅管理器，负责管理所有仓库订阅"""
@@ -29,18 +18,7 @@ class SubscriptionManager:
         daily_updates: bool = True,
         weekly_report: bool = True
     ) -> bool:
-        """
-        添加订阅
-        
-        Args:
-            repository: 仓库全名 "owner/repo"
-            subscriber: 订阅者邮箱
-            daily_updates: 是否接收每日更新
-            weekly_report: 是否接收每周报告
-            
-        Returns:
-            是否成功添加
-        """
+        """添加订阅"""
         # 检查订阅是否已存在
         existing = self.get_subscription_by_repo(repository)
         

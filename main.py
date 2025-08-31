@@ -17,7 +17,13 @@ def main():
         
         # 初始化核心组件
         subscription_manager = SubscriptionManager(config)
-        github_client = GitHubClient(config.github_token)
+        
+        github_token = config.get("github_token", "")
+        if not github_token:
+            logger.error("配置中未找到 github_token，请检查 config.yaml")
+        return
+
+        github_client = GitHubClient(github_token)
         
         # 示例：添加对langchain-ai/langchain的订阅
         langchain_repo = "langchain-ai/langchain"

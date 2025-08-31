@@ -43,7 +43,6 @@ class Config:
             config_data.setdefault('logging', {})['level'] = os.environ['LOG_LEVEL']
             
         # 可以添加更多环境变量的映射
-        
         return cls(config_data)
     
     def get(self, key: str, default: Optional[any] = None) -> any:

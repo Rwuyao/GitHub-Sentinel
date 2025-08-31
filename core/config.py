@@ -1,14 +1,14 @@
 import os
 import yaml
-import logging  # 引入logging模块
+import logging
 from typing import Dict, Optional
 
 class Config:
-    """配置管理类，支持从文件和环境变量加载配置"""
+    """配置管理类，支持环境变量优先于配置文件的加载策略"""
     
     def __init__(self, config_data: Dict = None):
         self.data = config_data or {}
-        # 映射日志等级字符串到logging模块的常量
+        # 日志等级映射
         self._log_level_mapping = {
             "DEBUG": logging.DEBUG,
             "INFO": logging.INFO,
@@ -16,12 +16,29 @@ class Config:
             "ERROR": logging.ERROR,
             "CRITICAL": logging.CRITICAL
         }
+        # 处理环境变量覆盖
+        self._apply_env_overrides()
+    
+    def _apply_env_overrides(self):
+        """应用环境变量覆盖，环境变量优先级高于配置文件"""
+        # GitHub Token 特殊处理：环境变量优先
+        if 'GITHUB_TOKEN' in os.environ:
+            self.data['github_token'] = os.environ['GITHUB_TOKEN']
+        
+        # 日志等级环境变量覆盖
+        if 'LOG_LEVEL' in os.environ:
+            if 'logging' not in self.data:
+                self.data['logging'] = {}
+            self.data['logging']['level'] = os.environ['LOG_LEVEL']
+        
+        # 其他需要环境变量覆盖的配置可以在这里添加
     
     @classmethod
     def from_file(cls, file_path: str) -> 'Config':
-        """从YAML文件加载配置"""
+        """从YAML文件加载配置，之后应用环境变量覆盖"""
         try:
-            with open(file_path, 'r') as f:
+            # 添加 encoding='utf-8'
+            with open(file_path, 'r', encoding='utf-8') as f:
                 config_data = yaml.safe_load(f) or {}
             return cls(config_data)
         except FileNotFoundError:
@@ -31,18 +48,17 @@ class Config:
     
     @classmethod
     def from_env(cls) -> 'Config':
-        """从环境变量加载配置"""
+        """仅从环境变量加载配置"""
         config_data = {}
         
-        # 读取GitHub相关配置
+        # GitHub Token
         if 'GITHUB_TOKEN' in os.environ:
             config_data['github_token'] = os.environ['GITHUB_TOKEN']
             
-        # 读取日志配置
+        # 日志等级
         if 'LOG_LEVEL' in os.environ:
-            config_data.setdefault('logging', {})['level'] = os.environ['LOG_LEVEL']
+            config_data['logging'] = {'level': os.environ['LOG_LEVEL']}
             
-        # 可以添加更多环境变量的映射
         return cls(config_data)
     
     def get(self, key: str, default: Optional[any] = None) -> any:
@@ -50,8 +66,8 @@ class Config:
         获取配置项，支持点符号嵌套访问
         
         Args:
-            key: 配置项键名，如 "scheduler.daily_time"
-            default: 默认值
+            key: 配置项键名，如 "subscription.storage_path"
+            default: 当配置项不存在时返回的默认值
         
         Returns:
             配置值或默认值
@@ -68,7 +84,7 @@ class Config:
         return value
     
     def get_log_level(self) -> int:
-        """获取日志等级对应的logging模块常量"""
+        """获取日志等级对应的logging常量"""
         level_str = self.get('logging.level', 'INFO').upper()
         return self._log_level_mapping.get(level_str, logging.INFO)
     
@@ -83,67 +99,3 @@ class Config:
             data = data[k]
         
         data[keys[-1]] = value
-
-def generate_default_config(file_path: str = "config.yaml") -> None:
-    """生成默认配置文件"""
-    default_config = {
-        "github_token": "your_github_personal_access_token_here",
-        "api_timeout": 10,
-        "api_retries": 3,
-        "scheduler": {
-            "daily_time": "08:30",
-            "weekly_day": "monday",
-            "weekly_time": "09:00",
-            "check_interval": 60
-        },
-        "subscription": {
-            "storage_type": "json",
-            "storage_path": "data/subscriptions.json",
-            "auto_save_interval": 300
-        },
-        "notifications": {
-            "email": {
-                "enabled": True,
-                "smtp_server": "smtp.gmail.com",
-                "smtp_port": 587,
-                "smtp_use_tls": True,
-                "smtp_username": "your-email@gmail.com",
-                "smtp_password": "your-app-password",
-                "from_address": "github-sentinel@example.com",
-                "subject_prefix": "[GitHub Sentinel] ",
-                "content_type": "html"
-            },
-            "slack": {
-                "enabled": False,
-                "webhook_url": "https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX",
-                "message_prefix": ":github: GitHub 更新通知: ",
-                "include_links": True
-            }
-        },
-        "report": {
-            "save_path": "reports/",
-            "format": "markdown",
-            "retention_days": 30,
-            "include": {
-                "releases": True,
-                "commits": True,
-                "pull_requests": True,
-                "issues": True,
-                "max_items": 20
-            }
-        },
-        "logging": {
-            "level": "INFO",
-            "file": "logs/github-sentinel.log",
-            "max_size": 10,
-            "max_backup": 5
-        }
-    }
-    
-    try:
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, 'w') as f:
-            yaml.dump(default_config, f, sort_keys=False, allow_unicode=True)
-        print(f"默认配置文件已生成: {file_path}")
-    except Exception as e:
-        print(f"生成配置文件失败: {str(e)}")

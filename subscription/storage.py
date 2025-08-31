@@ -23,7 +23,7 @@ class SubscriptionStorage:
         
         # 配置JSON存储
         if storage_type == "json":
-            self.storage_path = config.get("subscription_storage_path", "subscriptions.json")
+            self.storage_path = config.get("subscription.storage_path", "subscriptions.json")
             self._load_from_json()
         else:
             self.storage_path = None

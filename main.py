@@ -12,7 +12,7 @@ def main():
     
     try:
         # 加载配置
-        config = Config.from_env()
+        config = Config.from_file("config.yaml")
         logger.info("Configuration loaded successfully")
         
         # 初始化核心组件
@@ -21,7 +21,6 @@ def main():
         github_token = config.get("github_token", "")
         if not github_token:
             logger.error("配置中未找到 github_token，请检查 config.yaml")
-        return
 
         github_client = GitHubClient(github_token)
         

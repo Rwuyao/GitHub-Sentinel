@@ -2,11 +2,13 @@
 # 详细配置说明请参考文档或 config.yaml.example
 
 # GitHub API 访问配置
-github_token: "your_github_personal_access_token_here"
-# API 请求超时时间（秒）
-api_timeout: 10
-# API 请求重试次数
-api_retries: 3
+github:
+  api_token: ""
+  api_url: ""
+  # API 请求超时时间（秒）
+  api_timeout: 10
+  # API 请求重试次数
+  api_retries: 3
 
 # 任务调度配置
 scheduler:

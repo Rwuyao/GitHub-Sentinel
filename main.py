@@ -1,50 +1,27 @@
 import logging
+from core.scheduler import Scheduler
 from core.config import Config
 from core.logger import setup_logger
 from subscription.manager import SubscriptionManager
 from github.client import GitHubClient
+from notification.manager import NotificationManager
+from report.generator import ReportGenerator
 
 def main():
+    # 初始化配置
+    config = Config()
+    
     # 初始化日志
-    setup_logger()
+    setup_logger(config.get_log_level())
     logger = logging.getLogger(__name__)
     logger.info("Starting GitHub Sentinel...")
     
-    try:
-        # 加载配置
-        config = Config.from_file("config.yaml")
-        logger.info("Configuration loaded successfully")
-        
-        # 初始化核心组件
-        subscription_manager = SubscriptionManager(config)
-        
-        github_token = config.get("github_token", "")
-        if not github_token:
-            logger.error("配置中未找到 github_token，请检查 config.yaml")
-
-        github_client = GitHubClient(github_token)
-        
-        # 示例：添加对langchain-ai/langchain的订阅
-        langchain_repo = "langchain-ai/langchain"
-        test_subscriber = "user@example.com"
-        
-        # 添加订阅（如果不存在）
-        if not subscription_manager.get_subscription_by_repo(langchain_repo):
-            success = subscription_manager.add_subscription(
-                repository=langchain_repo,
-                subscriber=test_subscriber,
-                daily_updates=True,
-                weekly_report=True
-            )
-            if success:
-                logger.info(f"Successfully subscribed to {langchain_repo}")
-            else:
-                logger.error(f"Failed to subscribe to {langchain_repo}")
-        
-        # 这里可以添加更多初始化逻辑和任务调度
-        
-    except Exception as e:
-        logger.error(f"Failed to start GitHub Sentinel: {str(e)}", exc_info=True)
+    # 初始化核心组件
+    subscription_manager = SubscriptionManager(config)
+    github_client = GitHubClient(config)
+    notification_manager = NotificationManager(config)
+    report_generator = ReportGenerator(github_client)
+    report_generator.generate_repo_report("langchain-ai/langchain")
 
 if __name__ == "__main__":
     main()

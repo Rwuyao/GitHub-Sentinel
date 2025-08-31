@@ -1,101 +1,84 @@
 import os
 import yaml
 import logging
+from dataclasses import dataclass
 from typing import Dict, Optional
 
+@dataclass
 class Config:
-    """配置管理类，支持环境变量优先于配置文件的加载策略"""
+    """应用配置类，管理所有应用设置"""
     
-    def __init__(self, config_data: Dict = None):
-        self.data = config_data or {}
-        # 日志等级映射
-        self._log_level_mapping = {
-            "DEBUG": logging.DEBUG,
-            "INFO": logging.INFO,
-            "WARNING": logging.WARNING,
-            "ERROR": logging.ERROR,
-            "CRITICAL": logging.CRITICAL
-        }
-        # 处理环境变量覆盖
-        self._apply_env_overrides()
+    # GitHub API 配置
+    github_api_token: str = ""
+    github_api_url: str = "https://api.github.com"
     
-    def _apply_env_overrides(self):
-        """应用环境变量覆盖，环境变量优先级高于配置文件"""
-        # GitHub Token 特殊处理：环境变量优先
-        if 'GITHUB_TOKEN' in os.environ:
-            self.data['github_token'] = os.environ['GITHUB_TOKEN']
-        
-        # 日志等级环境变量覆盖
-        if 'LOG_LEVEL' in os.environ:
-            if 'logging' not in self.data:
-                self.data['logging'] = {}
-            self.data['logging']['level'] = os.environ['LOG_LEVEL']
-        
-        # 其他需要环境变量覆盖的配置可以在这里添加
+    # 调度配置
+    run_daily: bool = True
+    daily_time: str = "09:00"  # 每天检查时间
+    run_weekly: bool = True
+    weekly_day: str = "Monday"  # 每周报告日
     
-    @classmethod
-    def from_file(cls, file_path: str) -> 'Config':
-        """从YAML文件加载配置，之后应用环境变量覆盖"""
-        try:
-            # 添加 encoding='utf-8'
-            with open(file_path, 'r', encoding='utf-8') as f:
+    # 存储配置
+    storage_type: str = "sqlite"
+    storage_path: str = "data/subscriptions.db"
+    
+    # 日志配置
+    log_level: str = "INFO"
+    log_file: Optional[str] = None
+    
+    # 通知配置
+    notification_providers: Dict = None
+    
+    def __init__(self, config_file: str = "config.yaml"):
+        """从配置文件加载配置"""
+        self.notification_providers = {}
+        self._load_from_file(config_file)
+        self._load_from_env()
+    
+    def _load_from_file(self, config_file: str):
+        """从YAML文件加载配置"""
+        if os.path.exists(config_file):
+            with open(config_file, 'r',encoding='UTF-8') as f:
                 config_data = yaml.safe_load(f) or {}
-            return cls(config_data)
-        except FileNotFoundError:
-            raise Exception(f"配置文件 {file_path} 不存在")
-        except yaml.YAMLError as e:
-            raise Exception(f"解析配置文件失败: {str(e)}")
+                
+                # 加载GitHub配置
+                if 'github' in config_data:
+                    self.github_api_token = config_data['github'].get('api_token', self.github_api_token)
+                    self.github_api_url = config_data['github'].get('api_url', self.github_api_url)
+                
+                # 加载调度配置
+                if 'schedule' in config_data:
+                    self.run_daily = config_data['schedule'].get('run_daily', self.run_daily)
+                    self.daily_time = config_data['schedule'].get('daily_time', self.daily_time)
+                    self.run_weekly = config_data['schedule'].get('run_weekly', self.run_weekly)
+                    self.weekly_day = config_data['schedule'].get('weekly_day', self.weekly_day)
+                
+                # 加载存储配置
+                if 'storage' in config_data:
+                    self.storage_type = config_data['storage'].get('type', self.storage_type)
+                    self.storage_path = config_data['storage'].get('path', self.storage_path)
+                
+                # 加载日志配置
+                if 'logging' in config_data:
+                    self.log_level = config_data['logging'].get('level', self.log_level)
+                    self.log_file = config_data['logging'].get('file', self.log_file)
+                
+                # 加载通知配置
+                if 'notifications' in config_data:
+                    self.notification_providers = config_data['notifications']
     
-    @classmethod
-    def from_env(cls) -> 'Config':
-        """仅从环境变量加载配置"""
-        config_data = {}
-        
-        # GitHub Token
-        if 'GITHUB_TOKEN' in os.environ:
-            config_data['github_token'] = os.environ['GITHUB_TOKEN']
-            
-        # 日志等级
-        if 'LOG_LEVEL' in os.environ:
-            config_data['logging'] = {'level': os.environ['LOG_LEVEL']}
-            
-        return cls(config_data)
-    
-    def get(self, key: str, default: Optional[any] = None) -> any:
-        """
-        获取配置项，支持点符号嵌套访问
-        
-        Args:
-            key: 配置项键名，如 "subscription.storage_path"
-            default: 当配置项不存在时返回的默认值
-        
-        Returns:
-            配置值或默认值
-        """
-        keys = key.split('.')
-        value = self.data
-        
-        for k in keys:
-            if isinstance(value, dict) and k in value:
-                value = value[k]
-            else:
-                return default
-        
-        return value
+    def _load_from_env(self):
+        """从环境变量加载配置，覆盖文件配置"""
+        # 从环境变量获取GitHub token（优先级更高）
+        self.github_api_token = os.getenv('GITHUB_TOKEN', self.github_api_token)
     
     def get_log_level(self) -> int:
-        """获取日志等级对应的logging常量"""
-        level_str = self.get('logging.level', 'INFO').upper()
-        return self._log_level_mapping.get(level_str, logging.INFO)
-    
-    def set(self, key: str, value: any) -> None:
-        """设置配置项，支持点符号嵌套访问"""
-        keys = key.split('.')
-        data = self.data
-        
-        for i, k in enumerate(keys[:-1]):
-            if k not in data or not isinstance(data[k], dict):
-                data[k] = {}
-            data = data[k]
-        
-        data[keys[-1]] = value
+        """将日志级别字符串转换为logging模块的常量"""
+        level_map = {
+            'DEBUG': logging.DEBUG,
+            'INFO': logging.INFO,
+            'WARNING': logging.WARNING,
+            'ERROR': logging.ERROR,
+            'CRITICAL': logging.CRITICAL
+        }
+        return level_map.get(self.log_level.upper(), logging.INFO)

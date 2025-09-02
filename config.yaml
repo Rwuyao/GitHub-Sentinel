@@ -1,84 +1,21 @@
-# GitHub Sentinel 主配置文件
-# 详细配置说明请参考文档或 config.yaml.example
-
-# GitHub API 访问配置
-github:
-  api_token: ""
-  api_url: "https://api.github.com"
-  # API 请求超时时间（秒）
-  api_timeout: 10
-  # API 请求重试次数
-  api_retries: 3
-
-# 任务调度配置
-scheduler:
-  # 每日检查时间 (24小时制)
-  daily_time: "09:00"
-  # 每周检查日 (monday, tuesday, wednesday, thursday, friday, saturday, sunday)
-  weekly_day: "Monday"
-  # 每周检查时间
-  weekly_time: "09:00"
-  # 检查间隔（秒）- 内部循环使用
-  check_interval: 60
-
-# 订阅存储配置
-subscription:
-  # 存储类型: json 或 memory
-  type: "json"
-  # JSON存储文件路径（相对于项目根目录或绝对路径）
-  path: "data/subscriptions.json"
-  # 数据自动保存间隔（秒）- 仅内存存储有效
-  auto_save_interval: 300
-
-# 通知系统配置
-notifications:
-  # 邮件通知配置
-  email:
-    enabled: true
-    smtp_server: "smtp.gmail.com"
-    smtp_port: 587
-    smtp_use_tls: true
-    smtp_username: "your-email@gmail.com"
-    smtp_password: "your-app-password"  # 对于Gmail，使用应用专用密码
-    from_address: "github-sentinel@example.com"
-    # 邮件主题前缀
-    subject_prefix: "[GitHub Sentinel] "
-    # 邮件内容格式: plain 或 html
-    content_type: "html"
-
-  # Slack通知配置
-  slack:
-    enabled: false
-    webhook_url: "https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX"
-    # 消息前缀
-    message_prefix: ":github: GitHub 更新通知: "
-    # 是否在消息中包含详细链接
-    include_links: true
-
-# 报告生成配置
+github_token: your_github_token_here
+deepseek:
+  api_key: your_deepseek_api_key_here
+  model: deepseek-chat
+  api_url: https://api.deepseek.com/v1/chat/completions
+  temperature: 0.3
+  max_tokens: 1000
+api_timeout: 10
+api_retries: 3
 report:
-  # 报告保存路径
-  save_path: "reports/"
-  # 报告格式: markdown 或 html
-  format: "markdown"
-  # 保留历史报告的天数
-  retention_days: 30
-  # 报告中包含的信息类型
-  include:
-    releases: true
-    commits: true
-    pull_requests: true
-    issues: true
-    # 最多显示的条目数
-    max_items: 20
-
-# 日志配置
+  output_dir: ai_reports
+  max_preview_items:
+    releases: 3
+    commits: 5
+    pull_requests: 5
+    issues: 5
 logging:
-  # 日志级别: DEBUG, INFO, WARNING, ERROR, CRITICAL
-  level: "INFO"
-  # 日志文件路径（null表示仅输出到控制台）
-  file: "logs/github-sentinel.log"
-  # 日志文件滚动大小（MB）
+  level: INFO
+  file: logs/github-ai-summarizer.log
   max_size: 10
-  # 保留的日志文件数量
   max_backup: 5

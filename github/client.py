@@ -1,36 +1,26 @@
 import requests
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 
 class GitHubClient:
-    """GitHub API 客户端，用于获取仓库 仓库信息和动态"""
+    """GitHub API 客户端，修复了时区比较问题"""
     
     def __init__(self, github_token: str, timeout: int = 10, retries: int = 3):
         self.logger = logging.getLogger(__name__)
         self.github_token = github_token
         self.timeout = timeout
-        self.retries = retries  # 重试次数
+        self.retries = retries
         self.base_url = "https://api.github.com"
         
-        # 请求头，包含认证信息
         self.headers = {
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "GitHub-Sentinel"  # GitHub API 要求设置用户代理
+            "User-Agent": "GitHub-Sentinel"
         }
     
     def _make_request(self, endpoint: str, params: Dict = None) -> Optional[Any]:
-        """
-        发送API请求的内部方法，包含错误处理和重试逻辑
-        
-        Args:
-            endpoint: API端点路径，如 "/repos/langchain-ai/langchain"
-            params: 请求参数
-            
-        Returns:
-            API响应的JSON数据，或None（如果请求失败）
-        """
+        """发送API请求的内部方法，包含错误处理和重试逻辑"""
         url = f"{self.base_url}{endpoint}"
         params = params or {}
         
@@ -45,157 +35,169 @@ class GitHubClient:
                 
                 # 处理速率限制
                 if response.status_code == 403 and "rate limit" in response.text.lower():
-                    reset_time = datetime.fromtimestamp(int(response.headers.get("X-RateLimit-Reset", 0)))
+                    reset_time = datetime.fromtimestamp(
+                        int(response.headers.get("X-RateLimit-Reset", 0)),
+                        tz=timezone.utc
+                    )
                     self.logger.warning(
-                        f"GitHub API 速率限制已达。重置时间: {reset_time.strftime('%Y-%m-%d %H:%M:%S')}"
+                        f"GitHub API 速率限制已达。重置时间: {reset_time.strftime('%Y-%m-%d %H:%M:%S UTC')}"
                     )
                     return None
                 
-                response.raise_for_status()  # 抛出HTTP错误状态码
-                response.encoding = "utf-8"  # 强制UTF-8编码处理
+                response.raise_for_status()
+                response.encoding = "utf-8"
                 return response.json()
                 
             except requests.exceptions.RequestException as e:
                 self.logger.warning(f"API请求失败（尝试 {attempt + 1}/{self.retries}）: {str(e)}")
-                if attempt == self.retries - 1:  # 最后一次尝试失败
+                if attempt == self.retries - 1:
                     self.logger.error(f"API请求最终失败: {str(e)}")
                     return None
-                # 简单的指数退避重试
                 import time
                 time.sleep(2 **attempt)
         
         return None
     
+    def _parse_github_datetime(self, datetime_str: str) -> Optional[datetime]:
+        """解析GitHub API返回的datetime字符串为带UTC时区的datetime对象"""
+        if not datetime_str:
+            return None
+        try:
+            # 处理GitHub的"Z"时区标识（表示UTC）
+            return datetime.fromisoformat(datetime_str.replace("Z", "+00:00"))
+        except ValueError:
+            self.logger.warning(f"无法解析时间字符串: {datetime_str}")
+            return None
+    
+    def _ensure_utc_timezone(self, dt: datetime) -> datetime:
+        """确保datetime对象带UTC时区信息"""
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        # 转换为UTC时区
+        return dt.astimezone(timezone.utc)
+    
     def get_repo_info(self, repo_full_name: str) -> Optional[Dict]:
-        """
-        获取仓库基本信息
-        
-        Args:
-            repo_full_name: 仓库全名，格式为 "owner/repo"
-            
-        Returns:
-            包含仓库信息的字典
-        """
+        """获取仓库基本信息"""
         self.logger.info(f"获取仓库信息: {repo_full_name}")
         endpoint = f"/repos/{repo_full_name}"
         return self._make_request(endpoint)
     
     def get_latest_releases(self, repo_full_name: str, limit: int = 5, since: Optional[datetime] = None) -> List[Dict]:
-        """
-        获取仓库最新发布
-        
-        Args:
-            repo_full_name: 仓库全名
-            limit: 最大返回数量
-            since: 只返回此时间之后的发布
-            
-        Returns:
-            发布信息列表
-        """
+        """获取仓库最新发布"""
         self.logger.info(f"获取仓库最新发布: {repo_full_name}")
         endpoint = f"/repos/{repo_full_name}/releases"
         
         params = {"per_page": limit}
-        # 添加时间过滤
         if since:
-            params["since"] = since.isoformat()
+            # 转换为ISO格式的UTC时间字符串
+            since_utc = self._ensure_utc_timezone(since)
+            params["since"] = since_utc.isoformat()
         
         releases = self._make_request(endpoint, params) or []
         
-        # 过滤预发布（可选）
-        return [
-            release for release in releases
-            if not release.get("prerelease", False)  # 排除预发布版本
-        ][:limit]  # 再次确保不超过限制数量
+        # 过滤预发布并确保时间正确
+        filtered_releases = []
+        for release in releases:
+            if release.get("prerelease", False):
+                continue
+                
+            # 如果指定了since，进一步过滤
+            if since:
+                published_at = self._parse_github_datetime(release.get("published_at"))
+                if not published_at:
+                    continue
+                    
+                since_utc = self._ensure_utc_timezone(since)
+                if published_at >= since_utc:
+                    filtered_releases.append(release)
+            else:
+                filtered_releases.append(release)
+                
+            if len(filtered_releases) >= limit:
+                break
+        
+        return filtered_releases
     
     def get_recent_commits(self, repo_full_name: str, limit: int = 20, since: Optional[datetime] = None) -> List[Dict]:
-        """
-        获取仓库最近提交
-        
-        Args:
-            repo_full_name: 仓库全名
-            limit: 最大返回数量
-            since: 只返回此时间之后的提交
-            
-        Returns:
-            提交信息列表
-        """
+        """获取仓库最近提交"""
         self.logger.info(f"获取仓库最近提交: {repo_full_name}")
         endpoint = f"/repos/{repo_full_name}/commits"
         
         params = {"per_page": limit}
         if since:
-            params["since"] = since.isoformat()
+            since_utc = self._ensure_utc_timezone(since)
+            params["since"] = since_utc.isoformat()
         
         return self._make_request(endpoint, params) or []
     
     def get_recent_pull_requests(self, repo_full_name: str, limit: int = 20, since: Optional[datetime] = None) -> List[Dict]:
-        """
-        获取仓库最近的Pull Requests
-        
-        Args:
-            repo_full_name: 仓库全名
-            limit: 最大返回数量
-            since: 只返回此时间之后的PR
-            
-        Returns:
-            PR信息列表
-        """
+        """获取仓库最近的Pull Requests"""
         self.logger.info(f"获取仓库最近PR: {repo_full_name}")
         endpoint = f"/repos/{repo_full_name}/pulls"
         
         params = {
-            "state": "all",  # 所有状态（open, closed, merged）
+            "state": "all",
             "sort": "updated",
             "direction": "desc",
             "per_page": limit
         }
         
         prs = self._make_request(endpoint, params) or []
+        filtered = []
         
-        # 如果指定了时间范围，进一步过滤
         if since:
-            filtered_prs = []
+            since_utc = self._ensure_utc_timezone(since)
+            
             for pr in prs:
-                updated_at = datetime.fromisoformat(pr.get("updated_at", "").replace("Z", "+00:00"))
-                if updated_at >= since:
-                    filtered_prs.append(pr)
-                if len(filtered_prs) >= limit:
-                    break
-            return filtered_prs
+                updated_at = self._parse_github_datetime(pr.get("updated_at"))
+                if not updated_at:
+                    continue
+                    
+                if updated_at >= since_utc and len(filtered) < limit:
+                    filtered.append(pr)
+                    
+            return filtered
         
         return prs[:limit]
     
     def get_recent_issues(self, repo_full_name: str, limit: int = 20, since: Optional[datetime] = None) -> List[Dict]:
-        """
-        获取仓库最近的Issues
-        
-        Args:
-            repo_full_name: 仓库全名
-            limit: 最大返回数量
-            since: 只返回此时间之后的Issue
-            
-        Returns:
-            Issue信息列表
-        """
+        """获取仓库最近的Issues"""
         self.logger.info(f"获取仓库最近Issues: {repo_full_name}")
         endpoint = f"/repos/{repo_full_name}/issues"
         
         params = {
-            "state": "all",  # 所有状态（open, closed）
+            "state": "all",
             "sort": "updated",
             "direction": "desc",
-            "per_page": limit,
-            "since": since.isoformat() if since else None
+            "per_page": limit
         }
         
-        # 移除值为None的参数
-        params = {k: v for k, v in params.items() if v is not None}
+        if since:
+            since_utc = self._ensure_utc_timezone(since)
+            params["since"] = since_utc.isoformat()
         
         issues = self._make_request(endpoint, params) or []
         
-        # 过滤掉PR（因为GitHub API的issues端点会包含PR）
-        return [
-            issue for issue in issues
-            if "pull_request" not in issue  # 排除PR，只保留真正的Issue
-        ][:limit]
+        # 过滤掉PR并确保时间正确
+        filtered_issues = []
+        for issue in issues:
+            # 排除PR，只保留真正的Issue
+            if "pull_request" in issue:
+                continue
+                
+            # 如果指定了since，进一步过滤
+            if since:
+                updated_at = self._parse_github_datetime(issue.get("updated_at"))
+                if not updated_at:
+                    continue
+                    
+                since_utc = self._ensure_utc_timezone(since)
+                if updated_at >= since_utc:
+                    filtered_issues.append(issue)
+            else:
+                filtered_issues.append(issue)
+                
+            if len(filtered_issues) >= limit:
+                break
+        
+        return filtered_issues

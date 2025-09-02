@@ -4,7 +4,7 @@
 # GitHub API 访问配置
 github:
   api_token: ""
-  api_url: ""
+  api_url: "https://api.github.com"
   # API 请求超时时间（秒）
   api_timeout: 10
   # API 请求重试次数
@@ -13,9 +13,9 @@ github:
 # 任务调度配置
 scheduler:
   # 每日检查时间 (24小时制)
-  daily_time: "08:30"
+  daily_time: "09:00"
   # 每周检查日 (monday, tuesday, wednesday, thursday, friday, saturday, sunday)
-  weekly_day: "monday"
+  weekly_day: "Monday"
   # 每周检查时间
   weekly_time: "09:00"
   # 检查间隔（秒）- 内部循环使用
@@ -24,9 +24,9 @@ scheduler:
 # 订阅存储配置
 subscription:
   # 存储类型: json 或 memory
-  storage_type: "json"
+  type: "json"
   # JSON存储文件路径（相对于项目根目录或绝对路径）
-  storage_path: "data/subscriptions.json"
+  path: "data/subscriptions.json"
   # 数据自动保存间隔（秒）- 仅内存存储有效
   auto_save_interval: 300
 

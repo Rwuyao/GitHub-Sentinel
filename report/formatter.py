@@ -48,7 +48,7 @@ class MarkdownFormatter(ReportFormatter):
             for release in data["releases"]:
                 report.append(
                     f"| {release.get('tag_name', 'N/A')} | {release.get('published_at', 'N/A')} | "
-                    f"{release.get('author', {}).get('login', 'N/A')} | {release.get('name', '无描述')[:50]}... |"
+                    f"{release.get('author', {}).get('login', 'N/A')} | {release.get('name', '无描述')[:500]}... |"
                 )
         
         # 最近提交
@@ -79,7 +79,7 @@ class MarkdownFormatter(ReportFormatter):
             for pr in data["pull_requests"]:
                 report.append(
                     f"| #{pr.get('number')} | {pr.get('state')} | {pr.get('created_at')} | "
-                    f"{pr.get('user', {}).get('login', 'N/A')} | {pr.get('title', '')[:50]}... |"
+                    f"{pr.get('user', {}).get('login', 'N/A')} | {pr.get('title', '')[:300]}... |"
                 )
         
         # 最近Issues
@@ -94,7 +94,7 @@ class MarkdownFormatter(ReportFormatter):
             for issue in data["issues"]:
                 report.append(
                     f"| #{issue.get('number')} | {issue.get('state')} | {issue.get('created_at')} | "
-                    f"{issue.get('user', {}).get('login', 'N/A')} | {issue.get('title', '')[:50]}... |"
+                    f"{issue.get('user', {}).get('login', 'N/A')} | {issue.get('title', '')[:300]}... |"
                 )
         
         return "\n".join(report)

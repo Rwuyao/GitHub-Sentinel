@@ -10,20 +10,20 @@ class Config:
     
     # GitHub API 配置
     github_api_token: str = ""
-    github_api_url: str = "https://api.github.com"
+    github_api_url: str = ""
     
     # 调度配置
     run_daily: bool = True
-    daily_time: str = "09:00"  # 每天检查时间
+    daily_time: str = ""  # 每天检查时间
     run_weekly: bool = True
-    weekly_day: str = "Monday"  # 每周报告日
+    weekly_day: str = ""  # 每周报告日
     
     # 存储配置
-    storage_type: str = "sqlite"
-    storage_path: str = "data/subscriptions.db"
+    storage_type: str = ""
+    storage_path: str = ""
     
     # 日志配置
-    log_level: str = "INFO"
+    log_level: str = ""
     log_file: Optional[str] = None
     
     # 通知配置
@@ -54,9 +54,9 @@ class Config:
                     self.weekly_day = config_data['schedule'].get('weekly_day', self.weekly_day)
                 
                 # 加载存储配置
-                if 'storage' in config_data:
-                    self.storage_type = config_data['storage'].get('type', self.storage_type)
-                    self.storage_path = config_data['storage'].get('path', self.storage_path)
+                if 'subscription' in config_data:
+                    self.storage_type = config_data['subscription'].get('type', self.storage_type)
+                    self.storage_path = config_data['subscription'].get('path', self.storage_path)
                 
                 # 加载日志配置
                 if 'logging' in config_data:

@@ -1,13 +1,15 @@
 [
   {
     "id": 1,
-    "repository": "langchain-ai/langchain",
+    "repo_full_name": "langchain-ai/langchain",
     "subscribers": [
-      "user@example.com"
+      "282747051@qq.com"
     ],
-    "last_checked": "2025-08-31T15:31:20.743989",
-    "created_at": "2025-08-31T15:31:20.743990",
-    "daily_updates": true,
-    "weekly_report": true
+    "created_at": "2025-09-04T22:14:26.835662",
+    "last_processed_at": "2025-09-04T22:40:09.052155",
+    "time_range_type": "daily",
+    "custom_time_start": null,
+    "custom_time_end": null,
+    "enabled": true
   }
 ]

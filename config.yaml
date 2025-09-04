@@ -1,21 +1,39 @@
-github_token: your_github_token_here
-deepseek:
-  api_key: your_deepseek_api_key_here
-  model: deepseek-chat
-  api_url: https://api.deepseek.com/v1/chat/completions
-  temperature: 0.3
-  max_tokens: 1000
+# 基础配置
+github_token: "your_github_token_here"  # 优先环境变量 GITHUB_TOKEN
 api_timeout: 10
 api_retries: 3
+
+# DeepSeek大模型配置
+deepseek:
+  api_key: "your_deepseek_api_key_here"  # 优先环境变量 DEEPSEEK_API_KEY
+  base_url: "https://api.deepseek.com/v1/chat/completions"
+  model: "deepseek-chat"
+  temperature: 0.3
+  max_tokens: 1500
+
+# 订阅配置
+subscription:
+  storage_path: "data/subscriptions.json"  # 订阅数据存储路径
+  raw_data_dir: "data/raw_subscription_data"  # 订阅原始数据导出路径
+  auto_save_interval: 300  # 自动保存间隔（秒）
+
+# 定时任务配置
+scheduler:
+  daily_time: "22:40"  # 每日执行时间（24小时制）
+  max_concurrent: 5  # 最大并发处理订阅数
+
+# 报告配置
 report:
-  output_dir: ai_reports
+  output_dir: "ai_reports"  # 报告输出目录
   max_preview_items:
-    releases: 3
-    commits: 5
+    releases: 5
+    commits: 10
     pull_requests: 5
     issues: 5
+
+# 日志配置
 logging:
-  level: INFO
-  file: logs/github-ai-summarizer.log
-  max_size: 10
-  max_backup: 5
+  level: "INFO"
+  file: "logs/github-sentinel.log"
+  max_size: 10  # 日志文件最大大小（MB）
+  max_backup: 5  # 日志备份数量

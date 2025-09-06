@@ -19,7 +19,7 @@ subscription:
 
 # 定时任务配置
 scheduler:
-  daily_time: "22:40"  # 每日执行时间（24小时制）
+  daily_time: "22:30"  # 每日执行时间（24小时制）
   max_concurrent: 5  # 最大并发处理订阅数
 
 # 报告配置

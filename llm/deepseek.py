@@ -97,16 +97,18 @@ class DeepSeekClient:
                 "信息": commit_msg
             })
         
+        systemPrompt = f"""你是一名资深技术分析师，专注于从技术文档中提取结构化更新摘要。需保持客观严谨，避免主观评价。
+                            总结要求：
+                            1. 归纳主要的开发工作方向（功能开发、bug修复等）
+                            2. 指出是否有集中解决的问题或重点开发的功能
+                            3. 语言简洁，条理清晰
+                        """
         prompt = f"""请总结以下GitHub仓库的最近提交记录，识别开发趋势：
-{json.dumps(commit_data, ensure_ascii=False, indent=2)}
-
-总结要求：
-1. 归纳主要的开发工作方向（功能开发、bug修复等）
-2. 指出是否有集中解决的问题或重点开发的功能
-3. 语言简洁，条理清晰
-"""
-        
-        return self._call_api([{"role": "user", "content": prompt}])
+                    {json.dumps(commit_data, ensure_ascii=False, indent=2)}
+                    """
+        return self._call_api([
+             {"role": "system", "content": systemPrompt},
+            {"role": "user", "content": prompt}])
     
     def summarize_issues_prs(self, issues: List[Dict], prs: List[Dict]) -> str:
         """总结Issues和PRs"""
@@ -116,14 +118,15 @@ class DeepSeekClient:
         issue_data = [{"编号": i.get("number"), "状态": i.get("state"), "标题": i.get("title")} for i in issues]
         pr_data = [{"编号": p.get("number"), "状态": p.get("state"), "标题": p.get("title"), "是否合并": "是" if p.get("merged_at") else "否"} for p in prs]
         
+        systemPrompt = f"""你是一名资深技术分析师，专注于从技术文档中提取结构化更新摘要。需保持客观严谨，避免主观评价。
+                            总结要求：
+                            1. 归纳主要的开发工作方向（功能开发、bug修复等）
+                            2. 指出是否有集中解决的问题或重点开发的功能
+                            3. 语言简洁，条理清晰
+                        """
         prompt = f"""请总结以下GitHub仓库的社区活动：
-Issues: {json.dumps(issue_data, ensure_ascii=False)}
-Pull Requests: {json.dumps(pr_data, ensure_ascii=False)}
-
-总结要求：
-1. 分析主要讨论的问题和贡献的功能
-2. 指出社区关注的焦点
-3. 语言简洁，重点突出
-"""
-        
-        return self._call_api([{"role": "user", "content": prompt}])
+                    Issues: {json.dumps(issue_data, ensure_ascii=False)}
+                    Pull Requests: {json.dumps(pr_data, ensure_ascii=False)}
+                    """
+        return self._call_api([{"role": "system", "content": systemPrompt},
+                               {"role": "user", "content": prompt}])

@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "subscription_id": 1,
+    "title": "LangChain Weekly Report",
+    "date": "2023-09-01",
+    "status": "generated",
+    "path": "reports/langchain_20230901.md"
+  },
+  {
+    "id": 2,
+    "subscription_id": 2,
+    "title": "OpenAI Python Client Report",
+    "date": "2023-09-01",
+    "status": "generated",
+    "path": "reports/openai_20230901.md"
+  }
+]

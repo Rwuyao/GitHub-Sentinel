@@ -21,6 +21,14 @@ setup_logger(
     log_file=config.get("logging.file", "logs/app.log")
 )
 
+# 配置文件路径 - 明确设置订阅数据和报告的存储路径
+SUBSCRIPTION_DATA_PATH = "subscription_data/subscriptions.json"
+AI_REPORTS_DIR = "ai_reports"
+
+# 确保目录存在
+os.makedirs(os.path.dirname(SUBSCRIPTION_DATA_PATH), exist_ok=True)
+os.makedirs(AI_REPORTS_DIR, exist_ok=True)
+
 # 初始化核心组件
 github_token = os.getenv("GITHUB_TOKEN") or config.get("github_token")
 github_client = GitHubClient(github_token=github_token) if github_token else None
@@ -28,7 +36,8 @@ github_client = GitHubClient(github_token=github_token) if github_token else Non
 deepseek_api_key = os.getenv("DEEPSEEK_API_KEY") or config.get("deepseek.api_key")
 report_generator = AIReportGenerator(config, deepseek_api_key)
 
-sub_manager = SubscriptionManager(config, github_client) if github_client else None
+# 初始化订阅管理器时指定订阅数据路径
+sub_manager = SubscriptionManager(config, github_client, data_path=SUBSCRIPTION_DATA_PATH) if github_client else None
 
 # 全局状态存储
 state = {
@@ -52,9 +61,14 @@ def parse_date(date_str: str) -> Optional[date]:
         return None
 
 def load_subscriptions() -> pd.DataFrame:
-    """加载订阅数据并转换为DataFrame"""
+    """加载订阅数据并转换为DataFrame，从subscription_data/subscriptions.json读取"""
     if not sub_manager:
         return pd.DataFrame(columns=["ID", "仓库", "订阅者", "创建时间", "状态", "最后处理时间"])
+    
+    # 确保订阅数据文件存在
+    if not os.path.exists(SUBSCRIPTION_DATA_PATH):
+        with open(SUBSCRIPTION_DATA_PATH, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False)
     
     subs = sub_manager.list_subscriptions()
     data = []
@@ -70,13 +84,12 @@ def load_subscriptions() -> pd.DataFrame:
     return pd.DataFrame(data)
 
 def load_reports() -> pd.DataFrame:
-    """加载报告数据并转换为DataFrame"""
-    report_dir = config.get("report.output_dir", "ai_reports")
-    if not os.path.exists(report_dir):
+    """加载报告数据并转换为DataFrame，从ai_reports目录读取"""
+    if not os.path.exists(AI_REPORTS_DIR):
         return pd.DataFrame(columns=["文件名", "订阅ID", "仓库", "日期", "生成时间"])
     
     reports = []
-    for filename in os.listdir(report_dir):
+    for filename in os.listdir(AI_REPORTS_DIR):
         if filename.endswith("_ai_report.md"):
             parts = filename.split("_")
             if len(parts) >= 4 and parts[1].startswith("sub"):
@@ -86,7 +99,7 @@ def load_reports() -> pd.DataFrame:
                     repo_name = "_".join(parts[2:-2]).replace("_", "/")
                     
                     # 获取文件创建时间
-                    file_path = os.path.join(report_dir, filename)
+                    file_path = os.path.join(AI_REPORTS_DIR, filename)
                     create_time = datetime.fromtimestamp(os.path.getctime(file_path))
                     
                     reports.append({
@@ -102,12 +115,11 @@ def load_reports() -> pd.DataFrame:
     return pd.DataFrame(reports)
 
 def load_report_content(filename: str) -> str:
-    """加载报告内容"""
+    """加载报告内容，从ai_reports目录读取"""
     if not filename:
         return "请选择一个报告"
     
-    report_dir = config.get("report.output_dir", "ai_reports")
-    file_path = os.path.join(report_dir, filename)
+    file_path = os.path.join(AI_REPORTS_DIR, filename)
     
     if not os.path.exists(file_path):
         return f"报告文件不存在: {filename}"
@@ -129,7 +141,7 @@ def refresh_reports():
 
 # 订阅管理页签功能
 def add_subscription(repo_url: str, subscribers: str) -> Tuple[pd.DataFrame, str]:
-    """添加新订阅"""
+    """添加新订阅，保存到subscription_data/subscriptions.json"""
     if not sub_manager:
         return load_subscriptions(), "GitHub客户端未初始化，请检查配置"
     
@@ -155,7 +167,7 @@ def add_subscription(repo_url: str, subscribers: str) -> Tuple[pd.DataFrame, str
     return load_subscriptions(), msg
 
 def delete_selected_subscriptions() -> Tuple[pd.DataFrame, str]:
-    """删除选中的订阅"""
+    """删除选中的订阅，更新subscription_data/subscriptions.json"""
     if not sub_manager:
         return load_subscriptions(), "GitHub客户端未初始化，请检查配置"
     
@@ -167,10 +179,10 @@ def delete_selected_subscriptions() -> Tuple[pd.DataFrame, str]:
     
     # 清除选中状态
     state["selected_subscriptions"] = []
-    return load_subscriptions(), f"已删除选中的订阅"
+    return load_subscriptions(), "已删除选中的订阅"
 
 def toggle_subscription_status() -> Tuple[pd.DataFrame, str]:
-    """切换订阅状态（启用/禁用）"""
+    """切换订阅状态（启用/禁用），更新subscription_data/subscriptions.json"""
     if not sub_manager or not state["selected_subscriptions"]:
         return load_subscriptions(), "请先选择一个订阅"
     
@@ -214,7 +226,7 @@ def on_report_select(evt: gr.SelectData) -> Tuple[str, str]:
     return "未选择任何报告", ""
 
 def generate_reports(sub_id: str, start_date_str: str, end_date_str: str) -> Tuple[pd.DataFrame, str]:
-    """生成报告，使用字符串日期输入"""
+    """生成报告，保存到ai_reports目录"""
     if not sub_manager or not report_generator:
         return load_reports(), "初始化失败，请检查配置"
     
@@ -251,8 +263,8 @@ def generate_reports(sub_id: str, start_date_str: str, end_date_str: str) -> Tup
     if not success:
         return load_reports(), f"数据处理失败: {msg}"
     
-    # 生成AI报告
-    success_count, total_count, report_paths = report_generator.generate_all_reports()
+    # 生成AI报告，指定输出目录为ai_reports
+    success_count, total_count, report_paths = report_generator.generate_all_reports(output_dir=AI_REPORTS_DIR)
     
     return load_reports(), f"报告生成完成: 成功 {success_count}/{total_count}"
 
@@ -275,7 +287,7 @@ def save_config(config_data: Dict) -> str:
         with open("config.yaml", "w", encoding="utf-8") as f:
             yaml.dump(config_data, f, allow_unicode=True)
         
-        # 重新初始化相关组件
+        # 重新初始化相关组件，确保使用新的路径配置
         global github_client, sub_manager, report_generator
         
         github_token = config.get("github_token") or os.getenv("GITHUB_TOKEN")
@@ -284,7 +296,7 @@ def save_config(config_data: Dict) -> str:
         deepseek_api_key = config.get("deepseek.api_key") or os.getenv("DEEPSEEK_API_KEY")
         report_generator = AIReportGenerator(config, deepseek_api_key)
         
-        sub_manager = SubscriptionManager(config, github_client) if github_client else None
+        sub_manager = SubscriptionManager(config, github_client, data_path=SUBSCRIPTION_DATA_PATH) if github_client else None
         
         return "配置保存成功"
     except Exception as e:
@@ -299,6 +311,7 @@ def create_interface():
             # 第一个页签：订阅管理
             with gr.Tab("订阅管理"):
                 gr.Markdown("## 订阅列表")
+                gr.Markdown("数据存储路径: subscription_data/subscriptions.json")
                 gr.Markdown("提示：点击行进行选择/取消选择，可多选")
                 
                 with gr.Row():
@@ -327,6 +340,7 @@ def create_interface():
             # 第二个页签：报告管理
             with gr.Tab("报告管理"):
                 gr.Markdown("## 报告列表")
+                gr.Markdown("报告存储路径: ai_reports/")
                 
                 with gr.Row():
                     with gr.Column(scale=1):

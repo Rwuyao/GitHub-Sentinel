@@ -9,7 +9,7 @@ deepseek:
   base_url: "https://api.deepseek.com/v1/chat/completions"
   model: "deepseek-chat"
   temperature: 0.3
-  max_tokens: 1500
+  max_tokens: 6000
 
 # 订阅配置
 subscription:

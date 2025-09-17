@@ -430,5 +430,12 @@ def list_subs(obj, repo_full_name):
         click.echo(f"ID: {sub.id}, 仓库: {sub.repo_full_name}, 状态: {'启用' if sub.enabled else '禁用'}")
 
 if __name__ == "__main__":
-    cli()
+    try:
+        cli()
+    except KeyboardInterrupt:
+        click.echo("\n工具被手动中断")
+        sys.exit(0)
+    except Exception as e:
+        click.echo(f"工具运行出错: {str(e)}")
+        sys.exit(1)
     

@@ -5,8 +5,6 @@ import yaml
 from datetime import datetime, timedelta, date
 from typing import List, Dict, Tuple, Optional
 import pandas as pd
-
-# 假设以下模块已实现
 from subscription.manager import SubscriptionManager
 from subscription.models import Subscription
 from report.generator import AIReportGenerator
@@ -22,12 +20,8 @@ setup_logger(
 )
 
 # 配置文件路径 - 明确设置订阅数据和报告的存储路径
-SUBSCRIPTION_DATA_PATH = "subscription_data/subscriptions.json"
-AI_REPORTS_DIR = "ai_reports"
-
-# 确保目录存在
-os.makedirs(os.path.dirname(SUBSCRIPTION_DATA_PATH), exist_ok=True)
-os.makedirs(AI_REPORTS_DIR, exist_ok=True)
+SUBSCRIPTION_DATA_PATH = config.get("subscription.raw_data_dir", "data/raw_subscription_data")
+AI_REPORTS_DIR = config.get("report.output_dir", "ai_reports")
 
 # 初始化核心组件
 github_token = os.getenv("GITHUB_TOKEN") or config.get("github_token")
@@ -65,11 +59,6 @@ def load_subscriptions() -> pd.DataFrame:
     if not sub_manager:
         return pd.DataFrame(columns=["ID", "仓库", "订阅者", "创建时间", "状态", "最后处理时间"])
     
-    # 确保订阅数据文件存在
-    if not os.path.exists(SUBSCRIPTION_DATA_PATH):
-        with open(SUBSCRIPTION_DATA_PATH, "w", encoding="utf-8") as f:
-            json.dump([], f, ensure_ascii=False)
-    
     subs = sub_manager.list_subscriptions()
     data = []
     for sub in subs:
@@ -92,11 +81,11 @@ def load_reports() -> pd.DataFrame:
     for filename in os.listdir(AI_REPORTS_DIR):
         if filename.endswith("_ai_report.md"):
             parts = filename.split("_")
-            if len(parts) >= 4 and parts[1].startswith("sub"):
+            if len(parts) >= 4 and parts[3].startswith("sub"):
                 try:
-                    date_str = parts[0]
-                    sub_id = parts[1][3:]  # 从"sub123"提取"123"
-                    repo_name = "_".join(parts[2:-2]).replace("_", "/")
+                    date_str = parts[0]+parts[1]+parts[2]
+                    sub_id = parts[3][3:]  # 从"sub123"提取"123"
+                    repo_name = "_".join(parts[5:-2]).replace("_", "/")
                     
                     # 获取文件创建时间
                     file_path = os.path.join(AI_REPORTS_DIR, filename)
@@ -264,9 +253,13 @@ def generate_reports(sub_id: str, start_date_str: str, end_date_str: str) -> Tup
         return load_reports(), f"数据处理失败: {msg}"
     
     # 生成AI报告，指定输出目录为ai_reports
-    success_count, total_count, report_paths = report_generator.generate_all_reports()
+    success_count, total_count, report_paths = report_generator.generate_subscription_report(
+                    sub_id=sub_id_int,
+                    start_time=start_time,
+                    end_time=end_time
+                )
     
-    return load_reports(), f"报告生成完成: 成功 {success_count}/{total_count}"
+    return load_reports(), f"报告生成完成: 成功 {success_count}"
 
 # 配置管理页签功能
 def save_config(config_data: Dict) -> str:

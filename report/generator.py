@@ -1,259 +1,316 @@
 import os
 import json
-import time
 import logging
-from datetime import datetime
+from datetime import datetime, date, timezone
 from typing import List, Tuple, Optional, Dict
 from core.config import Config
-
-# 配置日志
-logger = logging.getLogger(__name__)
-
-# 简单的原始数据解析器替代类
-class SimpleDataParser:
-    """简单的数据解析器，用于处理原始数据"""
-    
-    def parse(self, raw_data: Dict) -> Dict:
-        """解析原始数据为结构化信息"""
-        if not raw_data:
-            return {}
-            
-        # 提取基本信息
-        repo_full_name = raw_data.get('repo_full_name', '未知仓库')
-        
-        # 提取时间范围
-        start_time = raw_data.get('time_range', {}).get('start', '未知')
-        end_time = raw_data.get('time_range', {}).get('end', '未知')
-        time_range = f"{start_time} 至 {end_time}"
-        
-        # 统计提交信息
-        commits = raw_data.get('commits', [])
-        commit_count = len(commits)
-        contributors = list(set(commit.get('author', {}).get('name', '未知') for commit in commits))
-        
-        # 统计Issues信息
-        issues = raw_data.get('issues', [])
-        open_issues = len([i for i in issues if i.get('state') == 'open'])
-        closed_issues = len([i for i in issues if i.get('state') == 'closed'])
-        
-        # 统计PR信息
-        pull_requests = raw_data.get('pull_requests', [])
-        open_prs = len([pr for pr in pull_requests if pr.get('state') == 'open'])
-        merged_prs = len([pr for pr in pull_requests if pr.get('merged', False)])
-        
-        # 构建结构化数据
-        return {
-            'repo_full_name': repo_full_name,
-            'time_range': time_range,
-            'commit_stats': {
-                'total': commit_count,
-                'contributors': contributors,
-                'top_contributor': contributors[0] if contributors else '无'
-            },
-            'issue_stats': {
-                'total': len(issues),
-                'open': open_issues,
-                'closed': closed_issues
-            },
-            'pr_stats': {
-                'total': len(pull_requests),
-                'open': open_prs,
-                'merged': merged_prs
-            }
-        }
+from llm.deepseek import DeepSeekClient
 
 class AIReportGenerator:
-    """AI报告生成器，用于处理原始数据并生成AI总结报告"""
+    """报告生成器：读取订阅原始数据，生成AI总结报告"""
     
-    def __init__(self, config: Config, api_key: str, default_output_dir: str = "ai_reports",
-                 raw_data_dir: str = "data/raw_subscription_data"):
-        """
-        初始化AI报告生成器
-        
-        参数:
-            config: 配置对象
-            api_key: AI模型API密钥
-            default_output_dir: 默认报告输出目录
-            raw_data_dir: 原始数据目录，默认为"data/raw_subscription_data"
-        """
+    def __init__(self, config: Config, deepseek_api_key: Optional[str]):
         self.config = config
-        self.api_key = api_key
-        self.default_output_dir = default_output_dir
-        self.raw_data_dir = raw_data_dir  # 设置原始数据目录为指定路径
+        self.logger = logging.getLogger(__name__)
+        self.raw_data_dir = config.get("subscription.raw_data_dir", "data/raw_subscription_data")
+        self.report_output_dir = config.get("report.output_dir", "ai_reports")
+        os.makedirs(self.report_output_dir, exist_ok=True)
         
-        # 确保目录存在
-        os.makedirs(self.default_output_dir, exist_ok=True)
-        os.makedirs(self.raw_data_dir, exist_ok=True)  # 确保原始数据目录存在
+        # 初始化大模型客户端
+        self.deepseek_client = DeepSeekClient(
+            api_key=deepseek_api_key,
+            config=config
+        ) if deepseek_api_key else None
+
+    @staticmethod
+    def _ensure_naive_datetime(dt: datetime) -> datetime:
+        """确保datetime对象不包含时区信息（转为offset-naive）"""
+        if dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None:
+            # 转换为UTC时间后移除时区信息
+            return dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+
+    @staticmethod
+    def _parse_iso_datetime(date_str: str) -> datetime:
+        """解析ISO格式的时间字符串，返回无时区信息的datetime对象"""
+        dt = datetime.fromisoformat(date_str)
+        return AIReportGenerator._ensure_naive_datetime(dt)
+
+    def load_subscription_raw_data(self, 
+                                  sub_id: Optional[int] = None,
+                                  start_time: Optional[datetime] = None,
+                                  end_time: Optional[datetime] = None) -> List[dict]:
+        """
+        加载订阅原始数据（支持时间范围筛选）
         
-        # 使用简单的数据解析器
-        self.data_parser = SimpleDataParser()
-        
-        # 从配置加载AI模型参数
-        self.model_name = config.get("deepseek.model", "deepseek-chat")
-        self.temperature = config.get("deepseek.temperature", 0.7)
-        self.max_tokens = config.get("deepseek.max_tokens", 2048)
-        
-        # 初始化AI客户端
-        self._init_ai_client()
-    
-    def _init_ai_client(self):
-        """初始化AI模型客户端"""
-        self.ai_client = None
-        if self.api_key:
-            try:
-                logger.info(f"初始化AI客户端，模型: {self.model_name}")
-                self.ai_client = {"initialized": True, "model": self.model_name}
-            except Exception as e:
-                logger.error(f"AI客户端初始化失败: {str(e)}")
-                self.ai_client = None
-    
-    def generate_all_reports(self, output_dir: Optional[str] = None) -> Tuple[int, int, List[str]]:
-        """生成所有未处理原始数据的AI报告"""
-        # 确定输出目录
-        output_dir = output_dir or self.default_output_dir
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # 检查原始数据目录是否存在
+        Args:
+            sub_id: 可选，订阅ID过滤
+            start_time: 可选，开始时间过滤
+            end_time: 可选，结束时间过滤
+            
+        Returns:
+            符合条件的原始数据列表
+        """
+        raw_data_list = []
         if not os.path.exists(self.raw_data_dir):
-            logger.warning(f"原始数据目录不存在: {self.raw_data_dir}，已自动创建空目录")
-            os.makedirs(self.raw_data_dir, exist_ok=True)
+            return raw_data_list
+        
+        # 处理查询时间（确保无时区信息）
+        query_start = self._ensure_naive_datetime(start_time) if start_time else None
+        query_end = self._ensure_naive_datetime(end_time) if end_time else None
+        
+        # 遍历所有原始数据文件
+        for filename in os.listdir(self.raw_data_dir):
+            if not filename.endswith("_raw.json"):
+                continue
+            file_path = os.path.join(self.raw_data_dir, filename)
+            
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                
+                # 筛选订阅ID
+                if sub_id is not None and data["subscription_id"] != sub_id:
+                    continue
+                
+                # 解析数据时间范围（确保无时区信息）
+                try:
+                    data_start = self._parse_iso_datetime(data["time_range"]["start"])
+                    data_end = self._parse_iso_datetime(data["time_range"]["end"])
+                except Exception as e:
+                    self.logger.warning(f"解析 {filename} 的时间范围失败: {str(e)}")
+                    continue
+                
+                # 筛选时间范围
+                if query_start and data_end < query_start:
+                    continue
+                if query_end and data_start > query_end:
+                    continue
+                
+                raw_data_list.append(data)
+            except Exception as e:
+                self.logger.error(f"加载原始数据 {filename} 失败: {str(e)}")
+        
+        # 按时间排序（最新在前）
+        return raw_data_list
+
+    def generate_single_raw_report(self, raw_data: dict) -> Tuple[bool, str, Optional[str]]:
+        """基于单条原始数据生成AI总结报告"""
+        if not self.deepseek_client:
+            return False, "未配置DeepSeek API Key，无法生成AI总结", None
+        
+        try:
+            # 1. 提取原始数据
+            sub_id = raw_data["subscription_id"]
+            repo_full_name = raw_data["repo_full_name"]
+            time_range = raw_data["time_range"]
+            repo_info = raw_data["data"]["repo_info"]
+            releases = raw_data["data"]["releases"]
+            prs = raw_data["data"]["pull_requests"]
+            issues = raw_data["data"]["issues"]
+
+            # 2. AI总结
+            self.logger.info(f"生成订阅ID {sub_id}（{repo_full_name}）的AI总结...")
+            summaries = {
+                "releases": self.deepseek_client.summarize_releases(releases),
+                "issues_prs": self.deepseek_client.summarize_issues_prs(issues, prs)
+            }
+
+            # 3. 生成Markdown内容
+            markdown_content = self._format_markdown(
+                repo_info=repo_info,
+                time_range=time_range,
+                summaries=summaries,
+                raw_data=raw_data["data"]
+            )
+
+            # 4. 保存报告
+            start_date = self._parse_iso_datetime(time_range["start"]).strftime("%Y%m%d")
+            safe_repo_name = repo_full_name.replace("/", "_")
+            report_filename = f"{start_date}_sub{sub_id}_{safe_repo_name}_ai_report.md"
+            report_path = os.path.join(self.report_output_dir, report_filename)
+
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(markdown_content)
+
+            return True, f"报告生成成功", report_path
+        except Exception as e:
+            return False, f"报告生成失败: {str(e)}", None
+
+    def generate_subscription_report(self, 
+                                    sub_id: int,
+                                    start_time: Optional[datetime] = None,
+                                    end_time: Optional[datetime] = None) -> Tuple[bool, str, Optional[str]]:
+        """生成报告（支持时间范围，默认最新数据）"""
+        # 加载符合条件的原始数据
+        raw_data_list = self.load_subscription_raw_data(
+            sub_id=sub_id,
+            start_time=start_time,
+            end_time=end_time
+        )
+        if not raw_data_list:
+            return False, f"未找到订阅ID {sub_id} 的原始数据", None
+        
+        # 按时间范围生成报告（多份数据合并）
+        if start_time and end_time:
+            return self._generate_merged_report(raw_data_list, start_time, end_time)
+        # 否则使用最新的单份数据
+        return self.generate_single_raw_report(raw_data_list[0])
+
+    def _generate_merged_report(self, raw_data_list: List[dict], start_time: datetime, end_time: datetime) -> Tuple[bool, str, Optional[str]]:
+        """合并多个原始数据生成报告"""
+        if not self.deepseek_client:
+            return False, "未配置DeepSeek API Key", None
+        
+        try:
+            # 合并数据
+            merged_data = {
+                "releases": [],
+                "pull_requests": [],
+                "issues": []
+            }
+            repo_info = raw_data_list[0]["data"]["repo_info"]
+            for data in raw_data_list:
+                merged_data["releases"].extend(data["data"]["releases"])
+                merged_data["pull_requests"].extend(data["data"]["pull_requests"])
+                merged_data["issues"].extend(data["data"]["issues"])
+            
+            # 去重（按ID）
+            merged_data["releases"] = list({r["id"]: r for r in merged_data["releases"]}.values())
+            merged_data["pull_requests"] = list({p["id"]: p for p in merged_data["pull_requests"]}.values())
+            merged_data["issues"] = list({i["id"]: i for i in merged_data["issues"]}.values())
+
+            # AI总结
+            summaries = {
+                "releases": self.deepseek_client.summarize_releases(merged_data["releases"]),
+                "issues_prs": self.deepseek_client.summarize_issues_prs(
+                    merged_data["issues"], 
+                    merged_data["pull_requests"]
+                )
+            }
+
+            # 生成报告
+            start_str = self._ensure_naive_datetime(start_time).strftime("%Y%m%d")
+            end_str = self._ensure_naive_datetime(end_time).strftime("%Y%m%d")
+            safe_repo_name = repo_info["full_name"].replace("/", "_")
+            report_filename = f"{start_str}_to_{end_str}_sub{raw_data_list[0]['subscription_id']}_{safe_repo_name}_ai_report.md"
+            report_path = os.path.join(self.report_output_dir, report_filename)
+
+            markdown_content = self._format_markdown(
+                repo_info=repo_info,
+                time_range={
+                    "start": start_time.isoformat(),
+                    "end": end_time.isoformat()
+                },
+                summaries=summaries,
+                raw_data=merged_data
+            )
+
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(markdown_content)
+            return True, f"合并报告生成成功", report_path
+        except Exception as e:
+            return False, f"合并报告失败: {str(e)}", None
+
+    def generate_all_reports(self) -> Tuple[int, int, List[str]]:
+        """生成所有未处理的原始数据报告（按时间排序）"""
+        raw_data_list = self.load_subscription_raw_data()
+        if not raw_data_list:
             return 0, 0, []
         
-        # 筛选出未生成报告的原始数据文件
-        raw_files = [f for f in os.listdir(self.raw_data_dir) if f.endswith("_raw_data.json")]
-        report_files = [f.replace("_raw_data.json", "_ai_report.md") for f in raw_files]
-        
         success_count = 0
-        total_count = 0
         report_paths = []
-        
-        # 为每个原始数据文件生成报告
-        for raw_file, report_file in zip(raw_files, report_files):
-            total_count += 1
-            raw_path = os.path.join(self.raw_data_dir, raw_file)
-            report_path = os.path.join(output_dir, report_file)
+        for raw_data in raw_data_list:
+            # 检查报告是否已存在
+            start_date = self._parse_iso_datetime(raw_data["time_range"]["start"]).strftime("%Y%m%d")
+            sub_id = raw_data["subscription_id"]
+            safe_repo_name = raw_data["repo_full_name"].replace("/", "_")
+            report_filename = f"{start_date}_sub{sub_id}_{safe_repo_name}_ai_report.md"
+            report_path = os.path.join(self.report_output_dir, report_filename)
             
-            # 跳过已存在的报告
             if os.path.exists(report_path):
-                logger.info(f"报告已存在，跳过: {report_path}")
-                report_paths.append(report_path)
-                success_count += 1
+                self.logger.info(f"报告已存在，跳过：{report_filename}")
                 continue
             
             # 生成报告
-            try:
-                logger.info(f"开始生成报告: {report_file}")
-                success = self.generate_report(raw_path, report_path)
-                
-                if success:
-                    success_count += 1
-                    report_paths.append(report_path)
-                    logger.info(f"报告生成成功: {report_path}")
-                else:
-                    logger.error(f"报告生成失败: {report_path}")
-            
-            except Exception as e:
-                logger.error(f"生成报告时发生错误 {raw_file}: {str(e)}")
-                continue
-            
-            # 避免API调用过于频繁
-            time.sleep(1)
+            success, msg, path = self.generate_single_raw_report(raw_data)
+            if success and path:
+                success_count += 1
+                report_paths.append(path)
         
-        return success_count, total_count, report_paths
+        return success_count, len(raw_data_list), report_paths
+
+    def _format_markdown(self, repo_info: dict, time_range: dict, summaries: dict, raw_data: dict) -> str:
+        """格式化Markdown报告内容"""
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        start_time = self._parse_iso_datetime(time_range["start"]).strftime("%Y-%m-%d %H:%M")
+        end_time = self._parse_iso_datetime(time_range["end"]).strftime("%Y-%m-%d %H:%M")
+
+        # 报告头部
+        md = [
+            f"# 🤖 GitHub订阅AI总结报告",
+            f"**仓库**: {repo_info.get('full_name', '未知')} [{repo_info.get('html_url', '')}]({repo_info.get('html_url', '')})",
+            f"**时间范围**: {start_time} ~ {end_time}",
+            f"**生成时间**: {created_at}",
+            "",
+            "## 📊 仓库基本信息",
+            f"- 名称: {repo_info.get('name', '未知')}",
+            f"- 描述: {repo_info.get('description', '无描述')}",
+            f"- 星级: {repo_info.get('stargazers_count', 0)} ⭐",
+            f"- 分支: {repo_info.get('forks_count', 0)} 🍴",
+            "",
+            "---",
+            "## 📝 AI智能总结",
+        ]
+
+        # 各模块总结
+        md.extend([
+            "### 🔖 发布总结",
+            summaries["releases"] if summaries["releases"] else "该时间段内无发布记录",
+            "",
+            "### 📢 社区活动总结（Issues/PR）",
+            summaries["issues_prs"] if summaries["issues_prs"] else "该时间段内无Issues和PR活动",
+            "",
+            "---",
+            "",
+        ])
+
+        # 原始数据预览
+        md.append("## 🔍 原始数据预览")
+        
+        # 发布预览
+        if raw_data["releases"]:
+            md.extend([
+                "### 最新发布",
+                "| 版本 | 发布时间 | 标题 |",
+                "|------|----------|------|",
+            ])
+            for r in raw_data["releases"][:5]:
+                publish_time = self._parse_iso_datetime(r.get('published_at')).strftime("%Y-%m-%d")
+                md.append(f"| {r.get('tag_name', '未知')} | {publish_time} | {r.get('name', '')[:50]} |")
+            md.append("")
+        
+        # PR预览
+        if raw_data["pull_requests"]:
+            md.extend([
+                "### 最近PR",
+                "| 编号 | 状态 | 标题 | 创建者 |",
+                "|------|------|------|--------|",
+            ])
+            for pr in raw_data["pull_requests"][:5]:
+                md.append(f"| #{pr.get('number')} | {pr.get('state')} | {pr.get('title', '')[:50]} | {pr.get('user', {}).get('login')} |")
+            md.append("")
+
+        # Issues预览
+        if raw_data["issues"]:
+            md.extend([
+                "### 最近Issues",
+                "| 编号 | 状态 | 标题 | 创建者 |",
+                "|------|------|------|--------|",
+            ])
+            for issue in raw_data["issues"][:5]:
+                md.append(f"| #{issue.get('number')} | {issue.get('state')} | {issue.get('title', '')[:50]} | {issue.get('user', {}).get('login')} |")
+            md.append("")
+
+        return "\n".join(md)
     
-    def generate_report(self, raw_data_path: str, report_path: str) -> bool:
-        """为单个原始数据文件生成AI报告"""
-        if not self.ai_client:
-            logger.error("AI客户端未初始化，无法生成报告")
-            return False
-        
-        # 解析原始数据
-        try:
-            with open(raw_data_path, "r", encoding="utf-8") as f:
-                raw_data = json.load(f)
-            
-            # 解析数据为结构化信息
-            parsed_data = self.data_parser.parse(raw_data)
-            if not parsed_data:
-                logger.error(f"无法解析原始数据: {raw_data_path}")
-                return False
-                
-        except Exception as e:
-            logger.error(f"解析原始数据失败 {raw_data_path}: {str(e)}")
-            return False
-        
-        # 构建AI提示词
-        prompt = self._build_prompt(parsed_data)
-        
-        # 调用AI生成报告
-        try:
-            ai_response = self._call_ai_api(prompt)
-            if not ai_response:
-                return False
-                
-        except Exception as e:
-            logger.error(f"调用AI API失败: {str(e)}")
-            return False
-        
-        # 保存报告
-        try:
-            with open(report_path, "w", encoding="utf-8") as f:
-                f.write(ai_response)
-            return True
-            
-        except Exception as e:
-            logger.error(f"保存报告失败 {report_path}: {str(e)}")
-            return False
-    
-    def _build_prompt(self, parsed_data: Dict) -> str:
-        """构建用于生成报告的AI提示词"""
-        repo_name = parsed_data.get("repo_full_name", "未知仓库")
-        time_range = parsed_data.get("time_range", "未知时间范围")
-        
-        prompt = f"""请分析以下GitHub仓库({repo_name})在{time_range}的活动数据，生成一份简洁明了的报告。
-报告应包含以下几个部分:
-1. 概述：简要总结这段时间的主要活动
-2. 代码提交：总结提交次数、主要贡献者和关键变更
-3. 问题(Issues)：总结新增、关闭的问题数量及主要类型
-4. 拉取请求(Pull Requests)：总结新增、合并的PR数量及主要内容
-5. 讨论要点：指出这段时间值得关注的重要讨论或决策
-
-请使用简洁的文本格式输出，使用标题和列表突出重点，语言简洁专业。
-
-原始数据摘要：
-{json.dumps(parsed_data, ensure_ascii=False, indent=2)[:2000]}
-"""
-        return prompt
-    
-    def _call_ai_api(self, prompt: str) -> Optional[str]:
-        """调用AI API生成报告内容（模拟实现）"""
-        # 模拟API调用延迟
-        time.sleep(1)
-        
-        # 模拟返回的报告内容
-        mock_report = f"""# GitHub仓库活动报告
-生成时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-
-## 1. 概述
-这是一份模拟的AI生成报告，基于提供的原始数据。在报告时间范围内，仓库有活跃的开发活动，包括多次代码提交和问题讨论。
-
-## 2. 代码提交
-- 提交次数：{len(prompt) % 10 + 1}次
-- 主要贡献者：模拟用户
-- 关键变更：修复了若干bug，添加了新功能
-
-## 3. 问题(Issues)
-- 新增：{len(prompt) % 5 + 1}个
-- 关闭：{len(prompt) % 3 + 1}个
-- 主要类型：功能请求、bug报告
-
-## 4. 拉取请求(Pull Requests)
-- 新增：{len(prompt) % 4 + 1}个
-- 合并：{len(prompt) % 2 + 1}个
-- 主要内容：功能实现、代码优化
-
-## 5. 讨论要点
-- 团队讨论了未来的开发计划
-- 针对某个关键问题达成了共识
-"""
-        return mock_report

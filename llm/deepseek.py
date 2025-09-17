@@ -10,7 +10,7 @@ class DeepSeekClient:
     def __init__(self, api_key: str, config: Optional[Config] = None):
         self.logger = logging.getLogger(__name__)
         self.api_key = api_key
-        
+        self.config = config
         # 从配置获取参数，或使用默认值
         if config:
             self.api_url = config.get("deepseek.api_url", "https://api.deepseek.com/v1/chat/completions")
@@ -72,44 +72,18 @@ class DeepSeekClient:
                 "描述": release.get("body", "无描述")[:500]
             })
         
-        prompt = f"""请总结以下GitHub仓库的最新发布信息，突出主要功能变化和重要修复：
-{json.dumps(release_data, ensure_ascii=False, indent=2)}
+        # 加载system-role提示词
+        prompt_file = "config/prompts/github_release_prompts.txt"
+        
+        # 尝试从文件加载
+        if self.config.load_prompt("github_release_prompts", prompt_file):
+            systemPrompt = self.config.get_prompt("github_release_prompts")
+        else:
+            systemPrompt = "你是一个专业的GitHub仓库分析助手，擅长总结代码仓库的活动和变化。"    
 
-总结要求：
-1. 分点列出每个版本的主要变化
-2. 语言简洁明了，重点说明对用户有影响的变更
-"""
-        
-        return self._call_api([{"role": "user", "content": prompt}])
-    
-    def summarize_commits(self, commits: List[Dict]) -> str:
-        """总结提交记录"""
-        if not commits:
-            return "无最近提交记录"
-            
-        commit_data = []
-        for commit in commits:
-            commit_msg = commit.get("commit", {}).get("message", "无提交信息").splitlines()[0]
-            commit_data.append({
-                "哈希": commit.get("sha", "")[:7],
-                "作者": commit.get("author", {}).get("login", "未知作者"),
-                "时间": commit.get("commit", {}).get("committer", {}).get("date", "未知时间"),
-                "信息": commit_msg
-            })
-        
-        systemPrompt = f"""你是一名资深技术分析师，专注于从技术文档中提取结构化更新摘要。需保持客观严谨，避免主观评价。
-                            总结要求：
-                            1. 归纳主要的开发工作方向（功能开发、bug修复等）
-                            2. 指出是否有集中解决的问题或重点开发的功能
-                            3. 语言简洁，条理清晰
-                        """
-        prompt = f"""请总结以下GitHub仓库的最近提交记录，识别开发趋势：
-                    {json.dumps(commit_data, ensure_ascii=False, indent=2)}
-                    """
-        return self._call_api([
-             {"role": "system", "content": systemPrompt},
-            {"role": "user", "content": prompt}])
-    
+        prompt = f"""Release: {json.dumps(release_data, ensure_ascii=False, indent=2)}"""
+        return self._call_api([{"role": "system", "content": systemPrompt},{"role": "user", "content": prompt}])
+ 
     def summarize_issues_prs(self, issues: List[Dict], prs: List[Dict]) -> str:
         """总结Issues和PRs"""
         if not issues and not prs:
@@ -118,15 +92,17 @@ class DeepSeekClient:
         issue_data = [{"编号": i.get("number"), "状态": i.get("state"), "标题": i.get("title")} for i in issues]
         pr_data = [{"编号": p.get("number"), "状态": p.get("state"), "标题": p.get("title"), "是否合并": "是" if p.get("merged_at") else "否"} for p in prs]
         
-        systemPrompt = f"""你是一名资深技术分析师，专注于从技术文档中提取结构化更新摘要。需保持客观严谨，避免主观评价。
-                            总结要求：
-                            1. 归纳主要的开发工作方向（功能开发、bug修复等）
-                            2. 指出是否有集中解决的问题或重点开发的功能
-                            3. 语言简洁，条理清晰
-                        """
-        prompt = f"""请总结以下GitHub仓库的社区活动：
-                    Issues: {json.dumps(issue_data, ensure_ascii=False)}
-                    Pull Requests: {json.dumps(pr_data, ensure_ascii=False)}
+        # 加载system-role提示词
+        prompt_file = "config/prompts/issues_pr_prompts.txt"
+        
+        # 尝试从文件加载
+        if self.config.load_prompt("issues_pr_prompts", prompt_file):
+            systemPrompt = self.config.get_prompt("issues_pr_prompts")
+        else:
+            systemPrompt = "你是一个专业的GitHub仓库分析助手，擅长总结代码仓库的活动和变化。"    
+
+        prompt = f"""Issues: {json.dumps(issue_data, ensure_ascii=False)}
+                     Pull Requests: {json.dumps(pr_data, ensure_ascii=False)}
                     """
         return self._call_api([{"role": "system", "content": systemPrompt},
                                {"role": "user", "content": prompt}])

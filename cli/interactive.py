@@ -14,7 +14,7 @@ from scheduler.background_scheduler import BackgroundScheduler
 def init_global_components() -> Tuple[Config, GitHubClient, SubscriptionManager, AIReportGenerator]:
     """初始化全局组件"""
     # 加载配置
-    config = Config.from_file("config.yaml")
+    config = Config.from_file("config/config.yaml")
     
     # 初始化日志
     setup_logger(
@@ -130,28 +130,16 @@ def execute_interactive_command(cmd: str,
             repo_full_name = parts[1]
             subscribers = parts[2].split(",")
             time_type = "daily"
-            custom_start = None
-            custom_end = None
 
             # 解析可选参数
             for i in range(3, len(parts)):
                 if parts[i].startswith("--time-type="):
                     time_type = parts[i].split("=")[1]
-                elif parts[i].startswith("--start="):
-                    custom_start = parse_datetime_param(parts[i].split("=")[1])
-                elif parts[i].startswith("--end="):
-                    custom_end = parse_datetime_param(parts[i].split("=")[1])
-
-            if time_type == "custom" and (not custom_start or not custom_end):
-                click.echo("错误：自定义时间范围需要同时指定--start和--end")
-                return
 
             success, msg = sub_manager.add_subscription(
                 repo_full_name=repo_full_name,
                 subscribers=subscribers,
-                time_range_type=time_type,
-                custom_time_start=custom_start,
-                custom_time_end=custom_end
+                time_range_type=time_type
             )
             click.echo(msg)
 

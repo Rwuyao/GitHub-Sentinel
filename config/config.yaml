@@ -24,7 +24,7 @@ scheduler:
 
 # 报告配置
 report:
-  output_dir: "ai_reports"  # 报告输出目录
+  output_dir: "data/ai_reports"  # 报告输出目录
   max_preview_items:
     releases: 5
     commits: 10

@@ -15,7 +15,7 @@ from github.client import GitHubClient
 from core.logger import setup_logger
 
 # 初始化配置和日志
-config = Config.from_file("config.yaml")
+config = Config.from_file("config/config.yaml")
 setup_logger(
     log_level=config.get("logging.level", "INFO"),
     log_file=config.get("logging.file", "logs/app.log")
@@ -37,7 +37,7 @@ deepseek_api_key = os.getenv("DEEPSEEK_API_KEY") or config.get("deepseek.api_key
 report_generator = AIReportGenerator(config, deepseek_api_key)
 
 # 初始化订阅管理器时指定订阅数据路径
-sub_manager = SubscriptionManager(config, github_client, data_path=SUBSCRIPTION_DATA_PATH) if github_client else None
+sub_manager = SubscriptionManager(config, github_client) if github_client else None
 
 # 全局状态存储
 state = {
@@ -264,7 +264,7 @@ def generate_reports(sub_id: str, start_date_str: str, end_date_str: str) -> Tup
         return load_reports(), f"数据处理失败: {msg}"
     
     # 生成AI报告，指定输出目录为ai_reports
-    success_count, total_count, report_paths = report_generator.generate_all_reports(output_dir=AI_REPORTS_DIR)
+    success_count, total_count, report_paths = report_generator.generate_all_reports()
     
     return load_reports(), f"报告生成完成: 成功 {success_count}/{total_count}"
 

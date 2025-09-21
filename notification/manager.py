@@ -3,32 +3,33 @@ import logging
 from .base import NotificationProvider
 from .email import EmailNotification
 from .slack import SlackNotification
+from core.config import Config
 
 class NotificationManager:
     """通知管理器，协调所有通知方式"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Config):
         self.logger = logging.getLogger(__name__)
         self.providers: List[NotificationProvider] = []
         
         # 初始化所有通知提供者
         self._init_providers(config)
         
-    def _init_providers(self, config: Dict):
+    def _init_providers(self, config: Config):
         """初始化所有可用的通知提供者"""
-        notification_config = config.notification_providers
+        notification_providers = config.get("notifications.notification_providers", "")
         
         # 添加邮件通知
-        if "email" in notification_config:
-            self.providers.append(EmailNotification(notification_config["email"]))
+        if "email" in notification_providers:
+            self.providers.append(EmailNotification(config))
             
         # 添加Slack通知
-        if "slack" in notification_config:
-            self.providers.append(SlackNotification(notification_config["slack"]))
+        if "slack" in notification_providers:
+            self.providers.append(SlackNotification(config))
             
         # 可以在这里添加其他通知方式，如Teams、Telegram等
         
-        self.logger.info(f"已初始化 {len(self.providers)} 种通知方式，其中 {sum(1 for p in self.providers if p.is_enabled())} 种已启用")
+        self.logger.info(f"已初始化 {len(self.providers)} 种通知方式")
     
     def send_notification(self, recipients: List[str], subject: str, content: str, provider_types: List[str] = None) -> bool:
         """

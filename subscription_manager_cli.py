@@ -9,7 +9,6 @@ from core.logger import setup_logger
 from github.client import GitHubClient
 from subscription.manager import SubscriptionManager
 from report.generator import AIReportGenerator
-from scheduler.background_scheduler import BackgroundScheduler
 
 def init_global_components() -> Tuple[Config, GitHubClient, SubscriptionManager, AIReportGenerator]:
     """初始化全局组件"""
@@ -82,20 +81,7 @@ def show_help():
      示例：generate-all-reports
      说明：为所有未生成报告的原始数据生成AI总结
 
-4. 定时任务：
-   - start-scheduler [--background]
-     示例：start-scheduler 或 start-scheduler --background
-     说明：启动定时任务，默认前台运行，--background选项可后台运行
-
-   - stop-scheduler
-     示例：stop-scheduler
-     说明：停止定时任务（包括后台进程）
-
-   - status-scheduler
-     示例：status-scheduler
-     说明：查看定时任务运行状态
-
-5. 其他：
+4. 其他：
    - help：显示此帮助信息
    - exit：退出工具
 """
@@ -113,8 +99,7 @@ def parse_datetime_param(param: str) -> Optional[datetime]:
 
 def execute_interactive_command(cmd: str, 
                                sub_manager: SubscriptionManager, 
-                               report_generator: AIReportGenerator,
-                               scheduler: BackgroundScheduler):
+                               report_generator: AIReportGenerator):
     """执行交互式命令"""
     parts = cmd.split()
     if not parts:
@@ -280,39 +265,6 @@ def execute_interactive_command(cmd: str,
                 click.echo(f"- {path}")
             if len(report_paths) > 5:
                 click.echo(f"... 还有 {len(report_paths) - 5} 个报告未显示")
-
-        # 启动定时任务
-        elif parts[0] == "start-scheduler":
-            if scheduler.is_running():
-                click.echo("定时任务已在运行")
-                return
-            
-            run_in_background = "--background" in parts
-            scheduler.start(run_in_background=run_in_background)
-            
-            if run_in_background:
-                click.echo("定时任务已以后台进程启动（日志：scheduler.log，错误日志：scheduler_error.log）")
-            else:
-                click.echo(f"定时任务已启动（每日 {scheduler.schedule_time} 执行）")
-
-        # 停止定时任务
-        elif parts[0] == "stop-scheduler":
-            if not scheduler.is_running():
-                click.echo("定时任务未在运行")
-                return
-            
-            scheduler.stop()
-            click.echo("定时任务已停止")
-
-        # 查看定时任务状态
-        elif parts[0] == "status-scheduler":
-            if scheduler.is_running():
-                next_run = scheduler.get_next_run_time()
-                click.echo(f"定时任务状态：运行中")
-                click.echo(f"下次执行时间：{next_run or '未知'}")
-            else:
-                click.echo("定时任务状态：已停止")
-
         # 未知命令
         else:
             click.echo(f"未知命令：{parts[0]}（输入 'help' 查看可用命令）")
@@ -322,22 +274,18 @@ def execute_interactive_command(cmd: str,
         logging.exception("命令执行异常")
 
 def interactive_loop(sub_manager: SubscriptionManager, 
-                    report_generator: AIReportGenerator,
-                    scheduler: BackgroundScheduler):
+                    report_generator: AIReportGenerator):
     """交互式命令循环"""
     while True:
         try:
             cmd = click.prompt("\n请输入命令", type=str).strip().lower()
             if cmd == "exit":
                 click.echo("退出工具...")
-                # 停止定时任务（如果运行中）
-                if scheduler.is_running():
-                    scheduler.stop()
                 break
             elif cmd == "help":
                 show_help()
             else:
-                execute_interactive_command(cmd, sub_manager, report_generator, scheduler)
+                execute_interactive_command(cmd, sub_manager, report_generator)
         except KeyboardInterrupt:
             click.echo("\n操作被中断，输入 'exit' 退出工具")
         except Exception as e:
@@ -368,8 +316,7 @@ def cli(ctx):
         # 初始化组件并进入交互循环
         try:
             config, github_client, sub_manager, report_generator = init_global_components()
-            scheduler = BackgroundScheduler(config, sub_manager, report_generator)
-            interactive_loop(sub_manager, report_generator, scheduler)
+            interactive_loop(sub_manager, report_generator)
         except Exception as e:
             click.echo(f"初始化失败: {str(e)}")
             sys.exit(1)

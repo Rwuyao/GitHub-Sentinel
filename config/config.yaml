@@ -37,3 +37,19 @@ logging:
   file: "logs/github-sentinel.log"
   max_size: 10  # 日志文件最大大小（MB）
   max_backup: 5  # 日志备份数量
+
+# 可选：配置通知方式（邮件/Slack）
+notifications:
+  notification_providers: ["email"]
+  email:
+    enabled: true
+    smtp_server: "smtp.qq.com"  # 你的SMTP服务器
+    smtp_port: 587
+    from_address: "282747051@qq.com"
+    smtp_username: "282747051@qq.com"
+    smtp_password: "moypddiyefdvbihd"  # 邮箱密码/应用专用密码
+    smtp_use_tls: true
+    content_type: html
+  slack:
+    enabled: false
+    webhook_url: "https://hooks.slack.com/services/XXXXXX"  # 你的Slack Webhook

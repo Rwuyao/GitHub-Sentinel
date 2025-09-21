@@ -1,16 +1,17 @@
 import requests
 from typing import List, Dict
 from .base import NotificationProvider
+from core.config import Config
 
 class SlackNotification(NotificationProvider):
     """Slack通知实现"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Config):
         super().__init__(config)
-        self.webhook_url = self.config.get("webhook_url")
-        self.message_prefix = self.config.get("message_prefix", "GitHub 更新通知: ")
-        self.include_links = self.config.get("include_links", True)
-        
+        self.webhook_url = self.config.get("notifications.slack.webhook_url")
+        self.message_prefix = self.config.get("notifications.slack.message_prefix", "GitHub 更新通知: ")
+        self.include_links = self.config.get("notifications.slack.include_links", True)
+        self.enabled = self.config.get("notifications.slack.enabled", False)
         # 验证必要配置
         if self.enabled and not self.webhook_url:
             self.logger.warning("Slack Webhook URL未配置，将禁用Slack通知")
@@ -45,3 +46,7 @@ class SlackNotification(NotificationProvider):
         except Exception as e:
             self.logger.error(f"Slack通知发送异常: {str(e)}")
             return False
+
+    def is_enabled(self) -> bool:
+        """检查当前通知方式是否启用"""
+        return self.enabled

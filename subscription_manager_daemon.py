@@ -86,7 +86,8 @@ def generate_daily_report():
         )
         
         # 生成报告
-        success_count, total_count, report_paths = report_generator.generate_all_reports()
+        subscriptions =sub_manager.list_subscriptions()
+        success_count, total_count, report_paths = report_generator.generate_all_reports(subscriptions)
         
         # 记录任务结果
         logger.info(

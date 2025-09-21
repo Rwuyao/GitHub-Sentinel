@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict
 import logging
+from core.config import Config
 
 class NotificationProvider(ABC):
     """通知提供者基类，所有通知方式都应实现此类"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Config):
         self.config = config
         self.logger = logging.getLogger(f"notification.{self.__class__.__name__}")
-        self.enabled = self.config.get("enabled", False)
         
     @abstractmethod
     def send(self, recipients: List[str], subject: str, content: str) -> bool:
@@ -24,7 +24,3 @@ class NotificationProvider(ABC):
             是否发送成功
         """
         pass
-        
-    def is_enabled(self) -> bool:
-        """检查当前通知方式是否启用"""
-        return self.enabled

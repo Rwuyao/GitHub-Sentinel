@@ -3,29 +3,23 @@ from email.mime.text import MIMEText
 from email.utils import formatdate
 from typing import List, Dict
 from .base import NotificationProvider
+from core.config import Config
 
 class EmailNotification(NotificationProvider):
     """邮件通知实现"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Config):
         super().__init__(config)
-        self.smtp_server = self.config.get("smtp_server")
-        self.smtp_port = self.config.get("smtp_port", 587)
-        self.smtp_username = self.config.get("smtp_username")
-        self.smtp_password = self.config.get("smtp_password")
-        self.from_address = self.config.get("from_address", self.smtp_username)
-        self.use_tls = self.config.get("smtp_use_tls", True)
-        self.subject_prefix = self.config.get("subject_prefix", "[GitHub Sentinel] ")
-        self.content_type = self.config.get("content_type", "plain")  # plain 或 html
-        
-        # 验证必要配置
-        if self.enabled:
-            required_fields = ["smtp_server", "smtp_username", "smtp_password"]
-            missing = [f for f in required_fields if not self.config.get(f)]
-            if missing:
-                self.logger.warning(f"邮件通知配置不完整，缺少: {', '.join(missing)}，将禁用邮件通知")
-                self.enabled = False
-    
+        self.smtp_server = config.get("notifications.email.smtp_server")
+        self.smtp_port = config.get("notifications.email.smtp_port", 587)
+        self.smtp_username = config.get("notifications.email.smtp_username")
+        self.smtp_password = config.get("notifications.email.smtp_password")
+        self.from_address = config.get("notifications.email.from_address", self.smtp_username)
+        self.use_tls = config.get("notifications.email.smtp_use_tls", True)
+        self.subject_prefix = config.get("notifications.email.subject_prefix", "[GitHub Sentinel] ")
+        self.content_type = config.get("notifications.email.content_type", "plain")  # plain 或 html
+        self.enabled = config.get("notifications.email.enabled", False)
+
     def send(self, recipients: List[str], subject: str, content: str) -> bool:
         """发送邮件通知"""
         if not self.enabled:
@@ -57,3 +51,7 @@ class EmailNotification(NotificationProvider):
         except Exception as e:
             self.logger.error(f"邮件发送失败: {str(e)}")
             return False
+
+    def is_enabled(self) -> bool:
+        """检查当前通知方式是否启用"""
+        return self.enabled

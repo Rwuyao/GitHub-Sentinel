@@ -4,7 +4,10 @@ import logging
 from datetime import datetime, date, timezone
 from typing import List, Tuple, Optional, Dict
 from core.config import Config
+from subscription.models import Subscription
 from llm.deepseek import DeepSeekClient
+from notification.manager import NotificationManager
+from utils.markdown_converter import MarkdownConverter
 
 class AIReportGenerator:
     """报告生成器：读取订阅原始数据，生成AI总结报告"""
@@ -15,7 +18,9 @@ class AIReportGenerator:
         self.raw_data_dir = config.get("subscription.raw_data_dir", "data/raw_subscription_data")
         self.report_output_dir = config.get("report.output_dir", "ai_reports")
         os.makedirs(self.report_output_dir, exist_ok=True)
-        
+        self.notificationManager =  NotificationManager(config)
+        self.converter = MarkdownConverter()
+
         # 初始化大模型客户端
         self.deepseek_client = DeepSeekClient(
             api_key=deepseek_api_key,
@@ -94,7 +99,7 @@ class AIReportGenerator:
         # 按时间排序（最新在前）
         return raw_data_list
 
-    def generate_single_raw_report(self, raw_data: dict) -> Tuple[bool, str, Optional[str]]:
+    def generate_single_raw_report(self, raw_data: dict,recipients: Optional[List[str]] = None,) -> Tuple[bool, str, Optional[str]]:
         """基于单条原始数据生成AI总结报告"""
         if not self.deepseek_client:
             return False, "未配置DeepSeek API Key，无法生成AI总结", None
@@ -133,6 +138,12 @@ class AIReportGenerator:
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write(markdown_content)
 
+            # 5. 发送提醒
+            if recipients:
+                html_content = self.converter.convert(markdown_content)
+                self.notificationManager.send_notification(recipients=recipients,subject=report_filename,content=html_content)
+           
+
             return True, f"报告生成成功", report_path
         except Exception as e:
             return False, f"报告生成失败: {str(e)}", None
@@ -140,7 +151,7 @@ class AIReportGenerator:
     def generate_subscription_report(self, 
                                     sub_id: int,
                                     start_time: Optional[datetime] = None,
-                                    end_time: Optional[datetime] = None) -> Tuple[bool, str, Optional[str]]:
+                                    end_time: Optional[datetime] = None,) -> Tuple[bool, str, Optional[str]]:
         """生成报告（支持时间范围，默认最新数据）"""
         # 加载符合条件的原始数据
         raw_data_list = self.load_subscription_raw_data(
@@ -212,7 +223,7 @@ class AIReportGenerator:
         except Exception as e:
             return False, f"合并报告失败: {str(e)}", None
 
-    def generate_all_reports(self) -> Tuple[int, int, List[str]]:
+    def generate_all_reports(self,subscriptions: Optional[List[Subscription]] = None,) -> Tuple[int, int, List[str]]:
         """生成所有未处理的原始数据报告（按时间排序）"""
         raw_data_list = self.load_subscription_raw_data()
         if not raw_data_list:
@@ -231,9 +242,12 @@ class AIReportGenerator:
             if os.path.exists(report_path):
                 self.logger.info(f"报告已存在，跳过：{report_filename}")
                 continue
-            
+            recipients = None
+            for sub in subscriptions:
+                if sub.id == sub_id:
+                    recipients = sub.subscribers
             # 生成报告
-            success, msg, path = self.generate_single_raw_report(raw_data)
+            success, msg, path = self.generate_single_raw_report(raw_data, recipients)
             if success and path:
                 success_count += 1
                 report_paths.append(path)

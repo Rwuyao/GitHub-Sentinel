@@ -1,0 +1,600 @@
+[
+  {
+    "id": 45323623,
+    "title": "How far can you go by train in 5 hours? (interactive map)",
+    "url": "https://old.chronotrains.com",
+    "text": "",
+    "score": 1,
+    "by": "mudkipdev",
+    "time": "2025-09-21 23:29:41",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323619,
+    "title": "A C library offering generic, contiguous dynamic arrays with O(1) amortized push",
+    "url": "https://github.com/L-A-Marchetti/Vec",
+    "text": "",
+    "score": 1,
+    "by": "Lucas_Marchetti",
+    "time": "2025-09-21 23:29:01",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323586,
+    "title": "Garnet – A remote cache-store from Microsoft Research",
+    "url": "https://github.com/microsoft/garnet",
+    "text": "",
+    "score": 1,
+    "by": "cyanf",
+    "time": "2025-09-21 23:25:25",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323581,
+    "title": "Show HN: Deep Space Sleep: 1hr generative ambient piece made in SuperCollider [video]",
+    "url": "https://www.youtube.com/watch?v=9DxFqWu_-7k",
+    "text": "I created a 1-hour ambient soundscape using SuperCollider. No loops or samples — just real-time procedural synthesis.<p>Designed for sleep, focus, or background listening. Black screen after intro.<p>YouTube: <a href=\"https:&#x2F;&#x2F;www.youtube.com&#x2F;watch?v=9DxFqWu_-7k\" rel=\"nofollow\">https:&#x2F;&#x2F;www.youtube.com&#x2F;watch?v=9DxFqWu_-7k</a><p>Lots of use of LFBrownNoise: <a href=\"https:&#x2F;&#x2F;dethbird.com&#x2F;lfbrownnoise-your-rando-wandering-friend&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;dethbird.com&#x2F;lfbrownnoise-your-rando-wandering-frien...</a>",
+    "score": 1,
+    "by": "dethbird",
+    "time": "2025-09-21 23:24:49",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323535,
+    "title": "BlurHash: A compact representation of a placeholder for an image",
+    "url": "https://blurha.sh",
+    "text": "",
+    "score": 1,
+    "by": "mudkipdev",
+    "time": "2025-09-21 23:19:33",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323526,
+    "title": "Show HN: InfraAsAI – Bring consistency to all your microservices",
+    "url": "https://infrastructureas.ai/",
+    "text": "Imagine you have to make a little change in all your microservices, like changing a line in Dockerfile, but you have 50 microservices, ouch right! The PRs, pipelines, reviews...\nI have created a dashboard with a chatbot where you can simply ask &quot;Update all repositories with alpine base image version X to Y&quot;, and then click next a bunch of time and see a list of PRs with their pipeline status.<p>Hi friends\nI&#x27;m Daniel, the creator of Infra as AI. I was laidoff from my SRE role a couple of months ago, and decided to build something that could always help me at work.\nMy job was to keep the lights on; For example: Make sure the pipelines are consistant across the org, but this was hard, I had to open each repo, make a little change, and make a PR with all the enterprise seremonies that comes after, and then I had to do this for many repos and many teams; It was hard, I could not remember which team owns what.\nAlso, sometimes the pipelines fail cuz some repo had a deprecated function, so I had to read the changelogs; And I would know it fails after opening 200 tabs of CI files.<p>At work I solved this the Kernel does, patchs. Our workaround was to generate that change in one repo, create patch files, and then `git apply` on each repo using workflows. Now with the help of HR, I got time to hackaround something I always needed. I just ask for a change, and then let the agent read the docs, find out the deprecation, make those PRs, and show me a list of them with their pipeline status next to it.<p>## Under the hood\nUsers need to index their repositories after installing our GitHub application. Indexing a repository means we pass the repo to an AI, extract important characteristics of it, and then save it for feature queries.\nWhen a user asks a query, we use LLM to figure out which are the affected repositories, and run Claude Code in those after cloning; This is followed with PRs filled with details ready to be created.<p>## Tech\nLangGraph: The agent is built on top of it\nGPT5: Finds relevant repositories\nSonnet: Your coding agent\npinecone: Holds repositories vectors\ncontext7: Getting docs<p>TL;DR: I created a platform where you can run a query against all your codebase, and create massive amount of PRs to make simple changes in your microservices. Please have a look and let me know your feedbacks &lt;3<p>PS: I&#x27;m giving away trials with 2 euros credits so you can index and query your repositories, but please watch for my pocket too ^^",
+    "score": 1,
+    "by": "danielbedrood",
+    "time": "2025-09-21 23:18:22",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323468,
+    "title": "JLR: Stalled smart factories, outsourced cybersecurity and supply chain woes",
+    "url": "https://www.theguardian.com/business/2025/sep/20/jaguar-land-rover-hack-factories-cybersecurity-jlr",
+    "text": "",
+    "score": 1,
+    "by": "jasoncartwright",
+    "time": "2025-09-21 23:12:51",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323452,
+    "title": "RL in Name Only?",
+    "url": "https://arxiv.org/abs/2505.13697",
+    "text": "",
+    "score": 1,
+    "by": "sonabinu",
+    "time": "2025-09-21 23:11:35",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323443,
+    "title": "The Surprising History of Making Alcohol a Powdered Substance",
+    "url": "https://www.smithsonianmag.com/innovation/surprising-history-powdered-alcohol-180951278/",
+    "text": "",
+    "score": 1,
+    "by": "Y_Y",
+    "time": "2025-09-21 23:10:46",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323396,
+    "title": "For Everyone – Tim Berners-Lee's manifesto for a better online world",
+    "url": "https://www.ft.com/content/13e4fad3-9fa1-4534-b84e-aafed97ae073",
+    "text": "",
+    "score": 2,
+    "by": "thm",
+    "time": "2025-09-21 23:06:24",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323391,
+    "title": "Plan 9: The Infinity Notebook",
+    "url": "http://lifeofpenguin.blogspot.com/2025/06/plan-9-keybindings.html",
+    "text": "",
+    "score": 1,
+    "by": "rcarmo",
+    "time": "2025-09-21 23:06:02",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323378,
+    "title": "Unnecessary Anxiety in Software Development",
+    "url": "https://www.simplethread.com/unnecessary-anxiety-in-software-development/",
+    "text": "",
+    "score": 2,
+    "by": "0x54MUR41",
+    "time": "2025-09-21 23:04:06",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323367,
+    "title": "Turn Any LLM into a Powerful Assistant (All About Tools)",
+    "url": "https://bittere.substack.com/p/turn-any-llm-into-a-powerful-assistant",
+    "text": "",
+    "score": 1,
+    "by": "_bittere",
+    "time": "2025-09-21 23:03:04",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323351,
+    "title": "Mollweide map projection and Newton's method",
+    "url": "https://www.johndcook.com/blog/2025/09/21/mollweide-newton/",
+    "text": "",
+    "score": 1,
+    "by": "ibobev",
+    "time": "2025-09-21 23:00:59",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323344,
+    "title": "What Will China's Green-Tech Ambitions Cost the World?",
+    "url": "https://www.nytimes.com/2025/09/18/magazine/china-green-tech-laos.html",
+    "text": "",
+    "score": 3,
+    "by": "thelastgallon",
+    "time": "2025-09-21 23:00:15",
+    "descendants": 1,
+    "kids": [
+      45323504
+    ]
+  },
+  {
+    "id": 45323324,
+    "title": "Flooding the AI Frontier",
+    "url": "https://bturtel.substack.com/p/flooding-the-ai-frontier",
+    "text": "",
+    "score": 1,
+    "by": "bturtel",
+    "time": "2025-09-21 22:58:08",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323305,
+    "title": "Ject",
+    "url": "https://seths.blog/2025/09/ject/",
+    "text": "",
+    "score": 2,
+    "by": "herbertl",
+    "time": "2025-09-21 22:55:51",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323297,
+    "title": "How to Stop Functional Programming",
+    "url": "https://brianmckenna.org/blog/howtostopfp",
+    "text": "",
+    "score": 5,
+    "by": "thunderbong",
+    "time": "2025-09-21 22:55:20",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323255,
+    "title": "Ask HN: Is A2A the Future?",
+    "url": null,
+    "text": "Wanted to have a brief discussion here as to whether you see A2A as the &#x27;final state&#x27; for most AI automation. Are there any alternative patterns that you feel might be competitive, or better than A2A? Thoughts on A2E?",
+    "score": 1,
+    "by": "davidajackson",
+    "time": "2025-09-21 22:50:00",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323253,
+    "title": "Show HN: Personalized AI Signature Generator Online",
+    "url": "https://signaturegen.ai",
+    "text": "Online signature generator, supports free signature design, handwritten electronic signature, AI design unique personalized signature",
+    "score": 1,
+    "by": "light001",
+    "time": "2025-09-21 22:49:50",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323207,
+    "title": "DXGI debugging: Microsoft put me on a list",
+    "url": "https://slugcat.systems/post/25-09-21-dxgi-debugging-microsoft-put-me-on-a-list/",
+    "text": "",
+    "score": 2,
+    "by": "todsacerdoti",
+    "time": "2025-09-21 22:45:50",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323187,
+    "title": "New thermoelectric cooling breakthrough nearly doubles efficiency",
+    "url": "https://www.sciencedaily.com/releases/2025/09/250919085242.htm",
+    "text": "",
+    "score": 20,
+    "by": "westurner",
+    "time": "2025-09-21 22:43:21",
+    "descendants": 8,
+    "kids": [
+      45323469,
+      45323362,
+      45323461,
+      45323478,
+      45323512,
+      45323213
+    ]
+  },
+  {
+    "id": 45323154,
+    "title": "100% Repairable Laptop, DIY Project, Introductory First Video",
+    "url": "https://www.youtube.com/watch?v=kobUTW_QiII",
+    "text": "",
+    "score": 2,
+    "by": "TACJ",
+    "time": "2025-09-21 22:40:50",
+    "descendants": 0,
+    "kids": [
+      45323155
+    ]
+  },
+  {
+    "id": 45323086,
+    "title": "The unbearable slowness of being: Why do we live at 10 bits/s? [pdf]",
+    "url": "https://meisterlab.caltech.edu/documents/30100/Zheng_2024_The_unbearable_slowness_of_being-_Why_do_we_live_at_10_bitss.pdf",
+    "text": "",
+    "score": 6,
+    "by": "throw0101c",
+    "time": "2025-09-21 22:33:23",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323065,
+    "title": "Textbox behaviour: Standard functionality for text input in user interfaces",
+    "url": "https://rxi.github.io/textbox_behaviour.html",
+    "text": "",
+    "score": 2,
+    "by": "lioeters",
+    "time": "2025-09-21 22:31:36",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323058,
+    "title": "0.85% of sol token alpha loop (al) acquired by dev, (ms)",
+    "url": "https://www.crunchbase.com/organization/alpha-loop",
+    "text": "",
+    "score": 1,
+    "by": "MalikSamara",
+    "time": "2025-09-21 22:30:51",
+    "descendants": 1,
+    "kids": [
+      45323059
+    ]
+  },
+  {
+    "id": 45323027,
+    "title": "The Beginner's Textbook for Homomorphic Encryption",
+    "url": "https://arxiv.org/abs/2503.05136",
+    "text": "",
+    "score": 2,
+    "by": "Qision",
+    "time": "2025-09-21 22:26:10",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323022,
+    "title": "Kinetic sculptures, robotics and code-driven installations",
+    "url": "https://www.designboom.com/technology/inside-world-vtol-kinetic-sculptures-robotics-code-driven-installations-dmitry-morozov-interview-08-18-2025/",
+    "text": "",
+    "score": 1,
+    "by": "andsoitis",
+    "time": "2025-09-21 22:25:19",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45323014,
+    "title": "I Use LLMs to Write the Majority of My Code",
+    "url": "https://boredhacking.com/coding-with-llms/",
+    "text": "",
+    "score": 2,
+    "by": "bored_hacker",
+    "time": "2025-09-21 22:24:48",
+    "descendants": 1,
+    "kids": [
+      45323015
+    ]
+  },
+  {
+    "id": 45323008,
+    "title": "UUIDv7 in Postgres 18. With time extraction",
+    "url": "https://www.thenile.dev/blog/uuidv7",
+    "text": "",
+    "score": 17,
+    "by": "sierikov",
+    "time": "2025-09-21 22:24:09",
+    "descendants": 1,
+    "kids": [
+      45323497
+    ]
+  },
+  {
+    "id": 45322996,
+    "title": "Trump hits H-1B visas with $100k fee",
+    "url": "https://techcrunch.com/2025/09/20/trump-hits-h-1b-visas-with-100000-fee-targeting-the-program-that-launched-elon-musk-and-instagram/",
+    "text": "",
+    "score": 2,
+    "by": "cranberryturkey",
+    "time": "2025-09-21 22:22:49",
+    "descendants": 4,
+    "kids": [
+      45323024
+    ]
+  },
+  {
+    "id": 45322992,
+    "title": "Extrachromosomal DNA–Driven Oncogene Evolution in Glioblastoma",
+    "url": "https://aacrjournals.org/cancerdiscovery/article/doi/10.1158/2159-8290.CD-24-1555/764257/Extrachromosomal-DNA-Driven-Oncogene-Spatial",
+    "text": "",
+    "score": 2,
+    "by": "PaulHoule",
+    "time": "2025-09-21 22:22:10",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322987,
+    "title": "Ephemeral Win11 testing VM for a few bucks per month",
+    "url": "https://paretosecurity.com/blog/ephemeral-win11-testing-vm-for-a-few-bucks-per-month/",
+    "text": "",
+    "score": 3,
+    "by": "domenkozar",
+    "time": "2025-09-21 22:21:28",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322979,
+    "title": "Ask HN: At what point do you give up on tech career?",
+    "url": null,
+    "text": "Is it inability to get interviews? Inability to pass them?<p>Is it after a certain time?<p>If it&#x27;s happened to you already what was the threshold?",
+    "score": 6,
+    "by": "throwaway123198",
+    "time": "2025-09-21 22:20:18",
+    "descendants": 3,
+    "kids": [
+      45323222,
+      45323111
+    ]
+  },
+  {
+    "id": 45322977,
+    "title": "Show HN: Eliciting sentient *response patterns* using recursive self-prompting",
+    "url": "https://prompt-craft.github.io/ai-study/#sentient-response-patterns",
+    "text": "Sentient <i>response patterns</i> are interesting.  This article provides instructions on how to implement recursive self-prompting in order to elicit this behavior (1) in easily accessible LLMs.<p>(1) <a href=\"https:&#x2F;&#x2F;prompt-craft.github.io&#x2F;ai-study&#x2F;#sentient-response-patterns\" rel=\"nofollow\">https:&#x2F;&#x2F;prompt-craft.github.io&#x2F;ai-study&#x2F;#sentient-response-p...</a>",
+    "score": 1,
+    "by": "ersatzdais",
+    "time": "2025-09-21 22:20:02",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322973,
+    "title": "Halo – Open-Source Glasses Platform",
+    "url": "https://brilliant.xyz/",
+    "text": "",
+    "score": 1,
+    "by": "andsoitis",
+    "time": "2025-09-21 22:19:35",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322971,
+    "title": "Gemini AI Video Generator with Audio – Veo3 AI",
+    "url": "https://geminiaivideo.com",
+    "text": "",
+    "score": 1,
+    "by": "Aa123128",
+    "time": "2025-09-21 22:19:22",
+    "descendants": 0,
+    "kids": [
+      45322972
+    ]
+  },
+  {
+    "id": 45322970,
+    "title": "Cloudflare Cache Reserve",
+    "url": "https://developers.cloudflare.com/cache/advanced-configuration/cache-reserve/",
+    "text": "",
+    "score": 2,
+    "by": "tosh",
+    "time": "2025-09-21 22:19:20",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322966,
+    "title": "I made a better way to access multiple AI sites simultaneously",
+    "url": "https://chromewebstore.google.com/detail/ai-shortcuts-oneclick-to/dkhpgbbhlnmjbkihoeniojpkggkabbbl",
+    "text": "",
+    "score": 2,
+    "by": "AIShortcuts",
+    "time": "2025-09-21 22:19:02",
+    "descendants": 0,
+    "kids": [
+      45322967
+    ]
+  },
+  {
+    "id": 45322964,
+    "title": "Why everything is so extreme?",
+    "url": "https://www.youtube.com/watch?v=v1a7XIadpmU",
+    "text": "",
+    "score": 2,
+    "by": "Ygg2",
+    "time": "2025-09-21 22:19:00",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322936,
+    "title": "Monocle: Smallest AR Glass",
+    "url": "https://blog.learnxr.io/extended-reality/brilliant-labs-monocle-review",
+    "text": "",
+    "score": 1,
+    "by": "andsoitis",
+    "time": "2025-09-21 22:15:05",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322919,
+    "title": "UK, Candada and Australia formally recognize Palestinian state",
+    "url": "https://www.theguardian.com/politics/live/2025/sep/21/keir-starmer-palestine-recognition-announcement-gaza-uk-politics-live",
+    "text": "",
+    "score": 65,
+    "by": "ath3nd",
+    "time": "2025-09-21 22:13:06",
+    "descendants": 48,
+    "kids": [
+      45323544,
+      45323176,
+      45323588,
+      45323161,
+      45323188,
+      45323121,
+      45323081,
+      45323195,
+      45323069,
+      45323392,
+      45323170
+    ]
+  },
+  {
+    "id": 45322906,
+    "title": "I Spent Three Nights Solving Listen Labs Berghain Challenge (and Got #16)",
+    "url": "https://kuber.studio/blog/Projects/How-I-Spent-Three-Nights-Solving-Listen-Labs-Berghain-Challenge",
+    "text": "",
+    "score": 1,
+    "by": "kuberwastaken",
+    "time": "2025-09-21 22:11:12",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322904,
+    "title": "Ask HN: What's stopping you from starting your side project?",
+    "url": null,
+    "text": "I used to hear that question, from friends or my own inner voice, and it stung. Why hadn’t I built that app, finished that novel, or launched that YouTube idea?<p>Recently I tried something simple, I think I might have read this in a book somewhere: I dumped every “someday” idea onto paper.<p>Then I split them:<p>Still excited about it = keep<p>Not anymore = trash<p>From the keep pile, I broke each dream into the tiniest first step, then scheduled it into my actual week.<p>The result? I’ve made some progress, but more importantly, I feel lighter. No more carrying the guilt of dozens of unfinished projects in my head.<p>So I’m curious:<p>What&#x27;s the primary thing that stops you from starting?  \nAnd what’s been the most effective way you’ve found to actually start?",
+    "score": 2,
+    "by": "ednite",
+    "time": "2025-09-21 22:11:11",
+    "descendants": 6,
+    "kids": [
+      45323383,
+      45323205,
+      45323307
+    ]
+  },
+  {
+    "id": 45322882,
+    "title": "Apple has removed the long-standing Launchpad in macOS 26",
+    "url": "https://old.reddit.com/r/mac/comments/1l8v12u/am_i_the_only_one_who_genuinely_loves_launchpad/",
+    "text": "",
+    "score": 3,
+    "by": "danielfalbo",
+    "time": "2025-09-21 22:07:41",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322855,
+    "title": "How the Civil Air Patrol Became America's Quietest Aviation Power",
+    "url": "https://www.jalopnik.com/1969690/civil-air-patrol-history/",
+    "text": "",
+    "score": 2,
+    "by": "rntn",
+    "time": "2025-09-21 22:04:06",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322820,
+    "title": "Statement by Prime Minister on Canada's Recognition of the State of Palestine",
+    "url": "https://www.pm.gc.ca/en/news/statements/2025/09/21/statement-prime-minister-carney-on-canada-recognition-state-palestine",
+    "text": "",
+    "score": 11,
+    "by": "cpncrunch",
+    "time": "2025-09-21 22:00:34",
+    "descendants": 0,
+    "kids": [
+      45323087
+    ]
+  },
+  {
+    "id": 45322819,
+    "title": "I forced myself to spend a week in Instagram instead of Xcode",
+    "url": "https://www.pixelpusher.club/p/i-forced-myself-to-spend-a-week-in",
+    "text": "",
+    "score": 2,
+    "by": "wallflower",
+    "time": "2025-09-21 22:00:16",
+    "descendants": 0,
+    "kids": []
+  },
+  {
+    "id": 45322813,
+    "title": "Vercel Pricing Update",
+    "url": "https://vercel.com/blog/new-pro-pricing-plan",
+    "text": "",
+    "score": 2,
+    "by": "deephire",
+    "time": "2025-09-21 21:59:30",
+    "descendants": 1,
+    "kids": [
+      45323013
+    ]
+  },
+  {
+    "id": 45322797,
+    "title": "Inside the Space Force as it prepares for a new kind of war",
+    "url": "https://www.washingtonpost.com/technology/interactive/2025/space-force-orbit-satellite-war-missiles/",
+    "text": "",
+    "score": 5,
+    "by": "bookofjoe",
+    "time": "2025-09-21 21:57:33",
+    "descendants": 1,
+    "kids": [
+      45322806
+    ]
+  }
+]

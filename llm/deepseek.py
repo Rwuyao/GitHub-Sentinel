@@ -106,3 +106,43 @@ class DeepSeekClient:
                     """
         return self._call_api([{"role": "system", "content": systemPrompt},
                                {"role": "user", "content": prompt}])
+    
+    def analyze_hackernews_trends(self, stories: List[Dict]) -> Optional[str]:
+        """
+        分析HackerNews热点并生成技术趋势总结
+        
+        参数:
+            stories: 从HackerNews获取的热点列表
+            
+        返回:
+            技术趋势分析报告
+        """
+        if not stories:
+            return "没有热点数据可供分析"
+        
+        # 加载system-role提示词
+        prompt_file = "config/prompts/hacker_news_prompts.txt"
+        
+        # 尝试从文件加载
+        if self.config.load_prompt("hacker_news_prompts", prompt_file):
+            systemPrompt = self.config.get_prompt("hacker_news_prompts")
+        else:
+            systemPrompt = "你是一个技术趋势分析专家，请总结如下热点趋势。"    
+   
+        # 准备分析数据 - 提取关键信息
+        stories_summary = []
+        for i, story in enumerate(stories[:15], 1):  # 取前15条进行分析
+            summary = f"""
+                        {i}. 标题: {story.get('title', '无标题')}
+                        得分: {story.get('score', 0)} | 评论数: {story.get('descendants', 0)}
+                        发布时间: {story.get('time', '未知')}
+                                    """.strip()
+            stories_summary.append(summary)
+        # 构建提示词
+        prompt = f"""
+                    热点内容({len(stories_summary)}条):
+                    {chr(10).join(stories_summary)}
+                    """
+        # 调用大模型进行分析
+        return self._call_api([{"role": "system", "content": systemPrompt},
+                               {"role": "user", "content": prompt}])

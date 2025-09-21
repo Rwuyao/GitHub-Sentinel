@@ -15,6 +15,7 @@ from typing import Optional
 from github.client import GitHubClient
 from subscription.manager import SubscriptionManager
 from report.generator import AIReportGenerator
+from report.hackernews_llm_report import HackerNewsLLMTrendReporter
 from core.config import Config
 from core.logger import setup_logger
 
@@ -51,6 +52,18 @@ def create_clients(config: Config):
     except Exception as e:
         logger.error(f"创建客户端失败: {str(e)}")
         return None, None
+    
+def generate_daily_hackernews_report():
+    # 1. 初始化报告生成器
+    config = Config.from_file("config/config.yaml")
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY") or config.get("deepseek.api_key")
+    reporter = HackerNewsLLMTrendReporter(deepseek_api_key,config)
+
+    # 2. 生成报告
+    success, md_content, html_content = reporter.generate_report(
+        save_raw=True,  # 保存原始数据
+        filter_tech=False  
+    )
 
 def generate_daily_report():
     """生成昨天的日报"""
@@ -106,7 +119,7 @@ def run_scheduler(schedule_time: str = DEFAULT_SCHEDULE_TIME):
     # 首次启动时立即执行一次
     logger.info("首次启动，立即执行一次报告生成")
     generate_daily_report()
-    
+    generate_daily_hackernews_report()
     # 安排每天指定时间执行
     logger.info(f"设置定时任务，每天 {schedule_time} 执行")
     schedule.every().day.at(schedule_time).do(generate_daily_report)

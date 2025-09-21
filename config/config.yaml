@@ -47,7 +47,7 @@ notifications:
     smtp_port: 587
     from_address: "282747051@qq.com"
     smtp_username: "282747051@qq.com"
-    smtp_password: "moypddiyefdvbihd"  # 邮箱密码/应用专用密码
+    smtp_password: "xxxx"  # 邮箱密码/应用专用密码
     smtp_use_tls: true
     content_type: html
   slack:

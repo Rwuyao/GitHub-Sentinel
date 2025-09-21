@@ -153,6 +153,7 @@ class SubscriptionManager:
         
         # 验证时间范围有效性
         if start_time >= end_time:
+            self.logger.info("开始时间必须早于结束时间")
             return False, "开始时间必须早于结束时间", []
         
         # 转换为日期对象（仅日期部分）
@@ -297,6 +298,7 @@ class SubscriptionManager:
                 )
                 results.append(res)
             else:
+                self.logger.info("订阅ID {sub.id} 已禁用，未处理")
                 results.append((False, f"订阅ID {sub.id} 已禁用，未处理", []))
         
         return results

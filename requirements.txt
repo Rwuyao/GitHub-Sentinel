@@ -8,3 +8,5 @@ PyYAML>=6.0.1
 psutil>=5.9.5  # 用于进程管理（跨平台）
 python-daemon 
 python-pidfile
+gradio
+markdown

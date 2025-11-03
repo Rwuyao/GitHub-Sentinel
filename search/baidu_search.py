@@ -122,8 +122,71 @@ class BaiduQianfanSearch:
             import traceback
             traceback.print_exc()
             return None
+  
+# 全局变量存储搜索器实例
+searcher = None
+
+def initialize_searcher(api_key: str) -> str:
+    """初始化搜索器"""
+    global searcher
+    try:
+        if api_key:
+            searcher = BaiduQianfanSearch(api_key)
+            return "✅ 搜索器初始化成功！"
+        else:
+            searcher = None
+            return "⚠️ API密钥为空，请输入有效的API密钥。"
+    except Exception as e:
+        searcher = None
+        return f"❌ 初始化失败: {str(e)}"
+
+def search_function(query: str) -> List[Dict]:
+    """使用百度千帆API进行搜索"""
+    global searcher
     
-    def fetch_page_content(self, url: str, timeout: int = 10) -> Optional[str]:
+    # 检查搜索器是否已初始化
+    if not searcher:
+        return []
+    
+    try:
+        # 调用百度千帆API进行搜索
+        result = searcher.search(query)
+        
+        if not result:
+            return []
+        
+        # 解析搜索结果
+        search_results = []
+        
+        # 检查响应结构
+        if "references" in result:
+            # 首先尝试从 references 数组获取结果
+                for item in result["references"]:
+                    # 提取标题、内容和URL
+                    title = item.get("title", "无标题")
+                    content = item.get("content", item.get("snippet", "无内容"))
+                    url = item.get("url", "")
+                    
+                    # 如果内容太短，尝试从其他字段获取
+                    if len(str(content)) < 50:
+                        content = item.get("snippet", "无内容")
+                    
+                    search_results.append({
+                        "title": title,
+                        "content": content,
+                        "url": url
+                    })            
+        print(f"📊 解析到 {len(search_results)} 个搜索结果")   
+        return search_results
+        
+    except Exception as e:
+        print(f"❌ 搜索过程中出现错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+  
+def fetch_page_content(url: str, timeout: int = 10) -> Optional[str]:
         """
         通过URL获取页面静态内容，提取关键文本
         
@@ -232,100 +295,3 @@ class BaiduQianfanSearch:
             import traceback
             traceback.print_exc()
             return None
-
-# 全局变量存储搜索器实例
-searcher = None
-
-def initialize_searcher(api_key: str) -> str:
-    """初始化搜索器"""
-    global searcher
-    try:
-        if api_key:
-            searcher = BaiduQianfanSearch(api_key)
-            return "✅ 搜索器初始化成功！"
-        else:
-            searcher = None
-            return "⚠️ API密钥为空，请输入有效的API密钥。"
-    except Exception as e:
-        searcher = None
-        return f"❌ 初始化失败: {str(e)}"
-
-def search_function(query: str) -> List[Dict]:
-    """使用百度千帆API进行搜索"""
-    global searcher
-    
-    # 检查搜索器是否已初始化
-    if not searcher:
-        return []
-    
-    try:
-        # 调用百度千帆API进行搜索
-        result = searcher.search(query)
-        
-        if not result:
-            return []
-        
-        # 解析搜索结果
-        search_results = []
-        
-        # 检查响应结构
-        if "references" in result:
-            # 首先尝试从 references 数组获取结果
-                for item in result["references"]:
-                    # 提取标题、内容和URL
-                    title = item.get("title", "无标题")
-                    content = item.get("content", item.get("snippet", "无内容"))
-                    url = item.get("url", "")
-                    
-                    # 如果内容太短，尝试从其他字段获取
-                    if len(str(content)) < 50:
-                        content = item.get("snippet", "无内容")
-                    
-                    search_results.append({
-                        "title": title,
-                        "content": content,
-                        "url": url
-                    })       
-        print(f"📊 解析到 {len(search_results)} 个搜索结果")
-        
-        # 抓取每个搜索结果的页面内容
-        print("\n" + "="*60)
-        print("开始抓取页面内容...")
-        print("="*60)
-        
-        for i, result in enumerate(search_results):
-            url = result.get("url")
-            if url and url.startswith(("http://", "https://")):
-                try:
-                    print(f"\n🔍 正在处理第 {i+1}/{len(search_results)} 个结果:")
-                    print(f"   URL: {url}")
-                    
-                    # 调用fetch_page_content方法获取页面内容
-                    page_content = searcher.fetch_page_content(url)
-                    
-                    # 如果获取到内容，更新结果中的content字段
-                    if page_content and len(page_content) > len(result["content"]):
-                        # 保留原始摘要的前200个字符作为摘要，完整内容存储在full_content中
-                        result["full_content"] = page_content
-                        # 更新content为更详细的摘要
-                        if len(page_content) > 300:
-                            result["content"] = page_content[:300] + "..."
-                        
-                except Exception as e:
-                    print(f"❌ 处理URL {url} 时出错: {e}")
-                    import traceback
-                    traceback.print_exc()
-            else:
-                print(f"\n⚠️  无效的URL: {url}")
-        
-        print("\n" + "="*60)
-        print("页面内容抓取完成")
-        print("="*60)
-        
-        return search_results
-        
-    except Exception as e:
-        print(f"❌ 搜索过程中出现错误: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return []

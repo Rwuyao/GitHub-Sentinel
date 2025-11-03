@@ -1,6 +1,7 @@
 """
-Gradio搜索总结助手 - 无配置版
-直接在代码中设置API密钥，删除配置界面
+Gradio搜索总结助手 - 优化版
+直接配置界面，直接在代码中设置API密钥
+优化功能：无搜索结果时隐藏区域、勾选效果、删除本地总结、延迟抓取页面内容
 """
 
 import gradio as gr
@@ -11,8 +12,8 @@ import requests
 from datetime import datetime
 from typing import Dict, Optional, List, Union
 
-# 导入百度搜索模块
-from search.baidu_search import BaiduQianfanSearch, initialize_searcher, search_function
+# 导入百度百度搜索模块
+from search.baidu_search import BaiduQianfanSearch, initialize_searcher, search_function, fetch_page_content
 
 # ==============================================================================
 # API密钥配置 - 请在此处设置您的API密钥
@@ -24,69 +25,51 @@ DEEPSEEK_MODEL = "deepseek-chat"
 
 # 百度千帆API配置
 BAIDU_API_KEY = "bce-v3/ALTAK-6M0XZAP4p09OIa2y5O5FX/c4383c8998a48a0548bdeb0f1ac50d856ea350a1"  # 请设置您的百度千帆API密钥
+BAIDU_SECRET_KEY = "2"  # 请设置您的百度千帆Secret Key
 # ==============================================================================
 
-# 全局状态管理 - 使用更简单的方式
+# 全局状态管理
 global_state = {
     "current_page": 1,
     "items_per_page": 5,
     "total_results": [],
     "search_results": [],
     "selected_results": [],
-    "summary_output": ""
+    "summary_output": "",
+    "fetched_contents": {}
 }
 
 # 初始化百度搜索器
-if BAIDU_API_KEY:
-    initialize_searcher(BAIDU_API_KEY)
+if BAIDU_API_KEY and BAIDU_SECRET_KEY:
+    initialize_searcher(api_key=BAIDU_API_KEY)
 
 # 模拟搜索结果（用于测试）
 mock_results = [
     {
         "title": "人工智能在医疗领域的应用",
-        "content": "人工智能技术正在彻底改变医疗行业带来革命性的变化。从疾病诊断到药物研发，AI都发挥着重要作用。机器学习算法可以分析大量的医疗数据，帮助医生疾病模式，帮助医生做出更准确的诊断。在医学影像领域，AI系统可以自动检测肿瘤和其他异常，提高诊断效率。此外，AI还可以用于个性化医疗，根据患者的基因信息和生活习惯，制定定制化的治疗方案。随着技术的不断进步，AI在医疗领域的应用前景非常广阔，但同时需要解决数据隐私和算法透明度等挑战。"
+        "content": "人工智能技术正在医疗行业带来革命性的变化。从疾病诊断到药物研发，AI都发挥着重要作用。机器学习算法可以分析大量的医疗数据，帮助医生医生疾病模式，帮助医生医生生做出更准确的诊断。在医学影像领域，AI系统可以自动检测肿瘤和其他异常常，提高诊断效率。此外，AI还可以用于个性化化医疗，根据患者的基因信息和生活习惯，制定定制定制化的治疗方案。随着技术的不断进步，AI在医疗领域的应用前景非常广阔，但但同时需要解决数据隐私和算法透明度等挑战。"
     },
     {
         "title": "气候变化对全球生态系统的影响",
-        "content": "气候变化是当今世界面临的最严峻挑战之一。全球气温上升导致冰川融化、海平面上升，威胁沿海地区的生态系统和人类居住地。极端天气天气事件如飓风、干旱和洪水变得更加频繁，给农业生产和粮食安全带来巨大压力。气候变化还影响生物多样性，许多物种面临灭绝的风险。海洋酸化是另一个严重问题，威胁着海洋生态系统的平衡。为了应对这些挑战，国际社会需要采取紧急行动，减少温室气体排放，保护生态系统，提高社会的适应能力。"
+        "content": "气候变化是当今今世界面临的最严峻挑战之一。全球气温上升导致冰川融化、海平面上升，威胁沿海地区的生态系统和人类居住地。极端天气天气天气事件如飓风、干旱和洪水变得更加频繁，给农业生产和粮食安全带来巨大压力。气候变化变化还影响生物多样性，许多物种面临灭绝的风险。海洋酸化是另一个严重问题，威胁着海洋生态系统的平衡。为了应对这些挑战，国际社会需要采取紧急行动，减少温室气体排放，保护生态系统，提高社会的适应能力。"
     },
     {
         "title": "量子计算的最新进展",
-        "content": "量子计算是一种基于量子力学原理的计算方式，具有解决传统计算机难以处理的复杂问题的潜力。近年来，量子计算领域取得了显著进展。谷歌、IBM、微软等科技巨头纷纷投入巨资研发量子计算机。2019年，谷歌宣布实现了量子优越性，即量子计算机完成了传统超级计算机无法在合理时间内完成的计算任务。量子计算在密码学、材料科学、药物研发等领域有广泛应用前景。然而，量子计算机仍然面临着稳定性、错误率和 scalability等挑战。研究人员正在不断探索新的量子算法和硬件技术，推动量子计算的实用化进程。"
+        "content": "量子计算是一种基于量子力学原理的计算方式，具有解决传统计算机难以处理的复杂问题的潜力。近年来，量子计算领域取得了显著进展。谷歌、IBM、微软等科技巨头纷纷投入巨资研发量子计算机。2019年，谷歌宣布实现了量子优越性，即量子计算机完成了传统超级计算机无法在合理时间内完成的计算任务。量子计算在密码学、材料科学、药物研发等领域有广泛应用前景。然而，量子计算机仍然面临着稳定性、错误率和可扩展性等挑战。研究人员正在不断探索新的量子算法和硬件技术，推动量子计算的实用化进程。"
     },
     {
         "title": "元宇宙：数字与现实的融合",
-        "content": "元宇宙是一个虚拟的数字空间，用户可以通过虚拟现实技术沉浸其中，与数字环境和其他用户进行互动。元宇宙概念近年来受到科技行业的广泛关注，被认为是互联网的下一代形态。在元宇宙中，人们可以工作、学习、娱乐、社交，甚至进行商业活动。元宇宙的发展依赖于虚拟现实（VR）、增强现实（AR）、区块链、人工智能等多种技术的融合。大型科技公司如Meta（原Facebook）、微软等都在积极布局元宇宙领域。然而，元宇宙的发展也面临着技术标准不统一、隐私安全、数字鸿沟等挑战。未来，元宇宙有望改变人们的生活和工作方式，但需要建立相应的法律和伦理框架来规范其发展。"
+        "content": "元宇宙是一个虚拟的数字空间，用户可以通过虚拟现实技术沉浸其中，与数字环境和其他用户进行互动。元宇宙概念近年来受到科技行业的广泛关注，被认为是互联网的下一代形态。在元宇宙中，人们可以工作、学习、娱乐、社交，甚至进行商业活动。元宇宙的发展依赖于虚拟现实（VR）、增强现实（AR）、区块链链、人工智能等多种技术的融合。大型科技公司如Meta（原Facebook）、微软等都在积极布局元宇宙领域。然而，元宇宙的发展也面临着技术标准不统一、隐私安全、数字鸿沟等挑战。未来，元宇宙有望改变人们的生活和工作方式，但需要建立相应的法律和伦理框架来规范其发展。"
     },
     {
         "title": "可再生能源的发展趋势",
         "content": "随着全球对气候变化的关注日益增加，可再生能源的发展成为实现碳中和目标的关键。太阳能、风能、水能、生物质能等可再生能源技术不断进步，成本持续下降。近年来，全球可再生能源装机容量快速增长，特别是太阳能和风能。储能技术的发展也为可再生能源的间歇性问题提供了解决方案。智能电网和能源互联网技术的应用，提高了能源系统的效率和灵活性。然而，可再生能源的大规模发展仍面临着电网基础设施升级、能源存储成本、政策支持等挑战。未来，可再生能源有望成为全球能源结构的主体，推动能源转型和可持续发展。"
     }
 ]
-
-def summarize_content(content):
-    """简单的内容总结函数"""
-    time.sleep(2)  # 模拟总结过程
-    
-    # 提取关键句子（这里使用简单的句号分割，实际应用中可以使用更复杂的NLP技术）
-    sentences = re.split(r'(?<=[。.!?])\s+', content)
-    
-    # 如果句子数量较少，直接返回原文
-    if len(sentences) <= 3:
-        return content
-    
-    # 简单选择开头和结尾的句子作为摘要
-    summary = " ".join(sentences[:2] + sentences[-1:])
-    
-    # 添加总结标记
-    summary = f"【内容总结】\n{summary}\n\n【总结说明】本总结基于原文的关键信息提取，保留了核心观点和结论。"
-    
-    return summary
-
 def call_deepseek_api(messages):
     """调用DeepSeek大模型API"""
     if not DEEPSEEK_API_KEY:
-        return "❌ DeepSeek API密钥密钥未配置，请在代码中设置API密钥。"
+        return "❌ DeepSeek API密钥未配置，请在代码中设置API密钥。"
     
     try:
         headers = {
@@ -130,13 +113,47 @@ def call_deepseek_api(messages):
     except Exception as e:
         return f"❌ DeepSeek API调用异常: {e}"
 
-def summarize_with_deepseek(selected_contents):
+def summarize_with_deepseek(table_data):
     """使用DeepSeek大模型总结选中的内容"""
-    if not selected_contents:
+    global global_state
+    
+    # 从表格数据中提取选中的标题
+    selected_titles = []
+    # 检查DataFrame是否为空
+    if not table_data.empty:
+        for _, row in table_data.iterrows():
+            if row.iloc[0]:  # 如果第一列（复选框）为True
+                selected_titles.append(row.iloc[1])  # 第二列是标题
+    
+    if not selected_titles:
         return "请先选择至少一个搜索结果。"
     
+    if not DEEPSEEK_API_KEY:
+        return "❌ DeepSeek API密钥未配置，请在代码中设置API密钥。"
+    
     try:
-        # 构建提示词
+        # 显示加载状态
+        yield (
+            gr.update(visible=True, value="🤖 正在准备总结...\n\n1. 检查已抓取的内容\n2. 抓取未获取的页面\n3. 生成总结报告"),
+            gr.update(visible=False)
+        )
+        
+        # 获取选中的结果
+        selected_results = []
+        for title in selected_titles:
+            for item in global_state["search_results"]:
+                if item["title"] == title:
+                    selected_results.append(item)
+                    break
+        
+        if not selected_results:
+            yield (
+                gr.update(visible=True, value="❌ 未找到选中的搜索结果"),
+                gr.update(visible=False)
+            )
+            return
+        
+        # 准备总结内容
         system_prompt = """你是一个专业的内容总结助手。请基于提供的搜索结果，撰写一份全面、准确、简洁的总结。
 要求：
 1. 总结所有关键信息和核心观点
@@ -147,29 +164,63 @@ def summarize_with_deepseek(selected_contents):
         
         messages = [{"role": "system", "content": system_prompt}]
         
-        # 添加所有选中的内容
-        for i, item in enumerate(selected_contents):
+        # 处理每个选中的结果
+        for i, item in enumerate(selected_results):
             title = item.get("title", f"结果 {i+1}")
-            content = item.get("full_content", item.get("content", "无内容"))
+            url = item.get("url", "")
+            
+            # 更新状态显示
+            yield (
+                gr.update(visible=True, value=f"🤖 正在处理: {title}\n\n进度: {i+1}/{len(selected_results)}"),
+                gr.update(visible=False)
+            )
+            
+            # 检查是否已经抓取过内容
+            if title in global_state["fetched_contents"]:
+                content = global_state["fetched_contents"][title]
+            else:
+                # 抓取页面内容
+                if url:
+                    content = fetch_page_content(url)
+                else:
+                    # 如果没有URL，使用搜索结果中的摘要
+                    content = item.get("content", "无内容")
+                
+                # 缓存抓取的内容
+                global_state["fetched_contents"][title] = content
             
             # 构建用户消息
             user_message = f"## 搜索结果 {i+1}: {title}\n\n{content}"
             messages.append({"role": "user", "content": user_message})
         
         # 添加总结请求
-        messages.append({"role": "user", "content": "请基于以上所有搜索结果，撰写一份综合总结。"})
+        messages.append({"role": "user", "content": "请基于以上所有搜索结果，撰写一份综合总结，突出关键要点。"})
+        
+        # 更新状态显示
+        yield (
+            gr.update(visible=True, value="🤖 正在使用DeepSeek大模型生成总结..."),
+            gr.update(visible=False)
+        )
         
         # 调用DeepSeek API
-        print(f"📝 正在使用DeepSeek大模型总结 {len(selected_contents)} 个搜索结果...")
+        print(f"📝 正在使用DeepSeek大模型总结 {len(selected_results)} 个搜索结果...")
         summary = call_deepseek_api(messages)
+        global_state["summary_output"] = summary
         
-        return summary
+        yield (
+            gr.update(visible=True, value=summary),
+            gr.update(visible=True)
+        )
         
     except Exception as e:
-        print(f"❌ DeepSeek总结过程中出现错误: {e}")
+        error_msg = f"❌ 总结过程中出现错误: {str(e)}"
+        print(f"❌ Deepseek总结过程中出现错误: {e}")
         import traceback
         traceback.print_exc()
-        return f"❌ 总结过程中出现错误: {str(e)}"
+        yield (
+            gr.update(visible=True, value=error_msg),
+            gr.update(visible=True)
+        )
 
 def download_markdown(title, content):
     """生成Markdown格式的下载内容"""
@@ -205,51 +256,22 @@ def download_summary(selected_results, content):
     markdown_content = download_markdown(title, content)
     return gr.File.update(value=markdown_content, visible=True, label="下载总结文件")
 
-def get_selected_contents(selected_titles, search_results):
-    """从选中的标题中获取完整内容"""
-    if not selected_titles or not search_results:
-        return []
-    
-    selected_contents = []
-    for title in selected_titles:
-        for item in search_results:
-            if item["title"] == title:
-                selected_contents.append(item)
-                break
-    
-    return selected_contents
-
-def summarize_selected_contents(selected_titles, search_results):
-    """总结选中的内容"""
-    selected_contents = get_selected_contents(selected_titles, search_results)
-    
-    if not selected_contents:
-        return "请先选择至少一个搜索结果。"
-    
-    # 如果只选中了一个结果，直接总结
-    if len(selected_contents) == 1:
-        return summarize_content(selected_contents[0]["content"])
-    
-    # 如果选中了多个结果，分别总结后合并
-    summaries = []
-    for i, item in enumerate(selected_contents):
-        summary = summarize_content(item["content"])
-        summaries.append(f"## 结果 {i+1}: {item['title']}\n\n{summary}")
-    
-    return "\n\n---\n\n".join(summaries)
-
 def format_results_for_page(page_num):
-    """格式化指定页的结果为卡片式HTML"""
+    """格式化指定页的结果为Gradio表格所需格式"""
+    global global_state
+    
     if not global_state["total_results"]:
-        return "<div class='no-results'>未找到相关结果，请尝试其他关键词。</div>"
+        return [], []
     
     # 计算当前页的结果范围
     start_idx = (page_num - 1) * global_state["items_per_page"]
     end_idx = start_idx + global_state["items_per_page"]
     current_results = global_state["total_results"][start_idx:end_idx]
     
-    # 格式化结果为卡片式HTML
-    cards_html = []
+    # 准备表格数据
+    table_data = []
+    selected_status = []
+    
     for i, result in enumerate(current_results):
         title = result["title"]
         content = result["content"]
@@ -261,63 +283,21 @@ def format_results_for_page(page_num):
         else:
             snippet = content
         
-        # 创建卡片HTML
-        card_html = f"""
-        <div class="search-card" id="result-{i}">
-            <div class="search-card-checkbox">
-                <input type="checkbox" id="checkbox-{i}" class="result-checkbox" data-title="{title}">
-            </div>
-            <div class="search-card-content">
-                <div class="search-card-title">
-                    {f'<a href="{url}" target="_blank" class="result-title-link" title="在新窗口打开">{title}</a>' if url else f'<label for="checkbox-{i}" class="result-title">{title}</label>'}
-                </div>
-                <div class="search-card-snippet">
-                    {snippet}
-                </div>
-                {f'<div class="search-card-url"><a href="{url}" target="_blank" class="result-url">查看原文</a></div>' if url else ''}
-            </div>
-        </div>
-        """
-        cards_html.append(card_html)
+        # 检查当前标题是否被选中
+        is_checked = title in global_state["selected_results"]
+        
+        # 添加到表格数据
+        table_data.append([
+            is_checked,
+            title,
+            snippet,
+            url
+        ])
+        
+        # 记录选中状态（用于后续同步）
+        selected_status.append((title, is_checked))
     
-    return f"""
-    <div class="search-results-container">
-        {"".join(cards_html)}
-    </div>
-    
-    <script>
-        // 处理复选框点击事件
-        document.addEventListener('DOMContentLoaded', function() {{
-            const checkboxes = document.querySelectorAll('.result-checkbox');
-            checkboxes.forEach(checkbox => {{
-                checkbox.addEventListener('change', function() {{
-                    const title = this.getAttribute('data-title');
-                    const isChecked = this.checked;
-                    
-                    // 获取当前选中的结果
-                    let selectedResults = gradioApp().getState('selected_results');
-                    if (!selectedResults) {{
-                        selectedResults = [];
-                    }}
-                    
-                    // 更新选中的结果
-                    if (isChecked) {{
-                        // 添加到选中列表
-                        if (!selectedResults.includes(title)) {{
-                            selectedResults.push(title);
-                        }}
-                    }} else {{
-                        // 从选中列表中移除
-                        selectedResults = selectedResults.filter(t => t !== title);
-                    }}
-                    
-                    // 更新状态
-                    gradioApp().setState('selected_results', selectedResults);
-                }});
-            }});
-        }});
-    </script>
-    """
+    return table_data, selected_status
 
 def perform_search(query):
     """执行搜索并返回结果"""
@@ -326,7 +306,7 @@ def perform_search(query):
         global global_state
         
         # 执行搜索
-        if BAIDU_API_KEY :
+        if BAIDU_API_KEY and BAIDU_SECRET_KEY:
             results = search_function(query)
         else:
             # 使用模拟数据
@@ -337,18 +317,21 @@ def perform_search(query):
         global_state["total_results"] = results
         global_state["current_page"] = 1
         global_state["search_results"] = results
+        global_state["selected_results"] = []  # 清空选中状态
+        global_state["fetched_contents"] = {}  # 清空抓取内容缓存
         
-        # 格式化当前页结果为卡片式HTML
-        cards_html = format_results_for_page(1)
+        # 格式化当前页结果为表格数据
+        table_data, _ = format_results_for_page(1)
         
         # 获取分页信息
         total_pages = get_total_pages()
         
-        # 返回结果
+        # 检查是否有搜索结果
+        has_results = len(results) > 0
+        
         return (
-            cards_html, 
-            gr.update(visible=True), 
-            gr.update(visible=DEEPSEEK_API_KEY != ""),  # 只有配置了API密钥才显示AI总结按钮
+            gr.update(value=table_data, visible=has_results),  # 无结果时隐藏
+            gr.update(visible=has_results and DEEPSEEK_API_KEY != ""),  # 只有配置API密钥时显示AI总结按钮
             gr.update(value=f"第 1/{total_pages} 页"),
             gr.update(interactive=False),
             gr.update(interactive=total_pages > 1)
@@ -356,8 +339,7 @@ def perform_search(query):
     except Exception as e:
         print(f"❌ 搜索过程中出现错误: {e}")
         return (
-            f"<div class='error-message'>搜索失败: {str(e)}</div>",
-            gr.update(visible=False),
+            gr.update(value=[], visible=True),
             gr.update(visible=False),
             gr.update(value="第 1/1 页"),
             gr.update(interactive=False),
@@ -386,10 +368,10 @@ def go_to_page(page_num):
             )
         
         global_state["current_page"] = page_num
-        cards_html = format_results_for_page(page_num)
+        table_data, _ = format_results_for_page(page_num)
         
         return (
-            gr.update(value=cards_html),
+            gr.update(value=table_data),
             gr.update(value=f"第 {page_num}/{total_pages} 页"),
             gr.update(interactive=page_num > 1),
             gr.update(interactive=page_num < total_pages)
@@ -411,61 +393,24 @@ def go_to_next_page():
     """跳转到下一页"""
     return go_to_page(global_state["current_page"] + 1)
 
-def on_select_change(selected_titles):
-    """当选中结果变化时"""
+def on_table_select_change(table_data):
+    """当表格选中状态变化时"""
     global global_state
+    
+    # 检查DataFrame是否为空
+    if table_data.empty:
+        return gr.update(visible=False)
+    
+    # 更新选中的结果
+    selected_titles = []
+    for _, row in table_data.iterrows():
+        if row.iloc[0]:  # 如果第一列（复选框）为True
+            selected_titles.append(row.iloc[1])  # 第二列是标题
+    
     global_state["selected_results"] = selected_titles
     
     # 如果有选中的结果，显示总结按钮
     return gr.update(visible=len(selected_titles) > 0)
-
-def generate_local_summary(selected_titles):
-    """生成本地总结"""
-    global global_state
-    
-    try:
-        summary = summarize_selected_contents(selected_titles, global_state["search_results"])
-        global_state["summary_output"] = summary
-        
-        return (
-            gr.update(visible=True, value=summary),
-            gr.update(visible=True)
-        )
-    except Exception as e:
-        error_msg = f"❌ 总结过程中出现错误: {str(e)}"
-        return (
-            gr.update(visible=True, value=error_msg),
-            gr.update(visible=True)
-        )
-
-def generate_deepseek_summary(selected_titles):
-    """生成DeepSeek总结"""
-    global global_state
-    
-    try:
-        # 显示加载状态
-        yield (
-            gr.update(visible=True, value="🤖 正在使用DeepSeek大模型总结..."),
-            gr.update(visible=False)
-        )
-        
-        # 获取选中的内容
-        selected_contents = get_selected_contents(selected_titles, global_state["search_results"])
-        
-        # 生成总结
-        summary = summarize_with_deepseek(selected_contents)
-        global_state["summary_output"] = summary
-        
-        yield (
-            gr.update(visible=True, value=summary),
-            gr.update(visible=True)
-        )
-    except Exception as e:
-        error_msg = f"❌ 总结过程中出现错误: {str(e)}"
-        yield (
-            gr.update(visible=True, value=error_msg),
-            gr.update(visible=True)
-        )
 
 def download_current_summary():
     """下载当前总结"""
@@ -485,7 +430,7 @@ def get_api_status():
     status_lines = []
     
     # 百度API状态
-    if BAIDU_API_KEY :
+    if BAIDU_API_KEY and BAIDU_SECRET_KEY:
         status_lines.append("✅ 百度千帆API已配置")
     else:
         status_lines.append("⚠️ 百度千帆API未配置，将使用模拟数据")
@@ -503,16 +448,13 @@ def create_app():
     """创建Gradio应用"""
     with gr.Blocks(title="搜索与总结助手", theme=gr.themes.Soft()) as demo:
         gr.Markdown("# 🔍 搜索与总结助手")
-        gr.Markdown("输入关键词并回车搜索，点击标题查看详细内容并生成总结。")
+        gr.Markdown("输入关键词并回车搜索，勾选想要总结的结果，然后点击生成总结按钮。")
         
         # 显示API状态
         api_status = gr.Markdown(
             value=get_api_status(),
             elem_id="api-status"
         )
-        
-        # 存储当前选中的标题
-        selected_results = gr.State([])
         
         # 主容器，用于水平居中
         with gr.Column(elem_id="main-container"):
@@ -533,15 +475,20 @@ def create_app():
             
             # 内容容器，用于保持尺寸一致
             with gr.Column(elem_id="content-container"):
-                # 搜索结果区域
-                search_results = gr.HTML(
-                    value="",
+                # 搜索结果区域 - 使用Gradio的表格组件
+                search_results = gr.Dataframe(
+                    headers=["选择", "标题", "内容摘要", "操作"],
+                    datatype=["bool", "str", "str", "str"],
+                    value=[],
                     label="搜索结果",
-                    elem_id="search-results"
+                    elem_id="search-results",
+                    visible=False,
+                    interactive=True,
+                    wrap=True
                 )
                 
-                # 分页控制
-                with gr.Row(elem_id="pagination-controls"):
+                # 分页控制 - 默认隐藏
+                with gr.Row(elem_id="pagination-controls", visible=False) as pagination_row:
                     prev_page_btn = gr.Button(
                         "◀️ 上一页",
                         interactive=False,
@@ -559,21 +506,14 @@ def create_app():
                         elem_id="next-page-btn"
                     )
             
-            # 总结按钮行
-            with gr.Row(elem_id="summary-buttons-row"):
-                summarize_local_btn = gr.Button(
-                    "📝 生成总结 (本地)",
-                    visible=False,
-                    elem_id="summarize-local-btn"
-                )
-                
-                summarize_deepseek_btn = gr.Button(
-                    "🤖 生成总结 (AI)",
-                    visible=False,
-                    elem_id="summarize-deepseek-btn"
-                )
+            # 总结按钮行 - 默认隐藏
+            summarize_deepseek_btn = gr.Button(
+                "🤖 生成总结 (AI)",
+                visible=False,
+                elem_id="summarize-deepseek-btn"
+            )
             
-            # 总结结果
+            # 总结结果 - 默认隐藏
             summary_output = gr.Textbox(
                 value="",
                 label="内容总结",
@@ -583,7 +523,7 @@ def create_app():
                 elem_id="summary-output"
             )
             
-            # 下载按钮
+            # 下载按钮 - 默认隐藏
             download_btn = gr.Button(
                 "💾 下载Markdown文件",
                 visible=False,
@@ -599,13 +539,21 @@ def create_app():
         search_input.submit(
             fn=perform_search,
             inputs=[search_input],
-            outputs=[search_results, summarize_local_btn, summarize_deepseek_btn, page_info, prev_page_btn, next_page_btn]
+            outputs=[search_results, summarize_deepseek_btn, page_info, prev_page_btn, next_page_btn]
+        ).then(
+            fn=lambda has_results: gr.update(visible=has_results),
+            inputs=[search_results],
+            outputs=[pagination_row]
         )
         
         search_btn.click(
             fn=perform_search,
             inputs=[search_input],
-            outputs=[search_results, summarize_local_btn, summarize_deepseek_btn, page_info, prev_page_btn, next_page_btn]
+            outputs=[search_results, summarize_deepseek_btn, page_info, prev_page_btn, next_page_btn]
+        ).then(
+            fn=lambda has_results: gr.update(visible=has_results),
+            inputs=[search_results],
+            outputs=[pagination_row]
         )
         
         # 分页功能
@@ -621,33 +569,22 @@ def create_app():
             outputs=[search_results, page_info, prev_page_btn, next_page_btn]
         )
         
-        # 监听选中结果变化
-        selected_results.change(
-            fn=on_select_change,
-            inputs=[selected_results],
-            outputs=[summarize_local_btn]
+        # 监听表格选中状态变化
+        search_results.change(
+            fn=on_table_select_change,
+            inputs=[search_results],
+            outputs=[summarize_deepseek_btn]
         )
         
-        # 只有配置了DeepSeek API密钥才显示AI总结按钮
-        if DEEPSEEK_API_KEY:
-            selected_results.change(
-                fn=on_select_change,
-                inputs=[selected_results],
-                outputs=[summarize_deepseek_btn]
-            )
-        
-        # 生成总结 - 本地
-        summarize_local_btn.click(
-            fn=generate_local_summary,
-            inputs=[selected_results],
-            outputs=[summary_output, download_btn]
-        )
-        
-        # 生成总结 - DeepSeek（只有配置了API密钥才添加这个事件）
+        # 生成总结 - DeepSeek
         if DEEPSEEK_API_KEY:
             summarize_deepseek_btn.click(
-                fn=generate_deepseek_summary,
-                inputs=[selected_results],
+                fn=lambda: gr.update(visible=False),
+                inputs=[],
+                outputs=[download_btn]
+            ).then(
+                fn=summarize_with_deepseek,
+                inputs=[search_results],
                 outputs=[summary_output, download_btn]
             )
         
@@ -692,7 +629,7 @@ def create_app():
                     flex-grow: 1;
                     margin-right: 10px;
                 }
-                #search-btn, #summarize-local-btn, #summarize-deepseek-btn {
+                #search-btn, #summarize-deepseek-btn {
                     white-space: nowrap;
                     margin-left: 5px;
                 }
@@ -703,76 +640,106 @@ def create_app():
                     min-height: 300px;
                     background-color: white;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                    display: flex;
+                    flex-direction: column;
                 }
                 #search-results {
                     width: 100%;
                     margin-bottom: 20px;
-                }
-                .search-results-container {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
-                    gap: 15px;
-                }
-                .search-card {
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    padding: 15px;
-                    background-color: white;
-                    transition: all 0.3s ease;
-                    display: flex;
-                    align-items: flex-start;
-                }
-                .search-card:hover {
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-                    transform: translateY(-2px);
-                }
-                .search-card-checkbox {
-                    margin-right: 15px;
-                    margin-top: 3px;
-                }
-                .search-card-content {
                     flex-grow: 1;
                 }
-                .search-card-title {
-                    font-size: 1.1em;
+                .gr-dataframe {
+                    width: 100%;
+                }
+                .gr-dataframe table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                }
+                .gr-dataframe th,
+                .gr-dataframe td {
+                    padding: 12px 15px;
+                    text-align: left;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                .gr-dataframe th {
+                    background-color: #f8f9fa;
                     font-weight: 600;
-                    margin-bottom: 8px;
+                    color: #333;
+                }
+                .gr-dataframe tbody tr {
+                    background-color: white;
+                    transition: all 0.2s ease;
+                }
+                .gr-dataframe tbody tr:hover {
+                    background-color: #f5f5f5;
+                }
+                /* 自定义复选框样式 */
+                .gr-dataframe input[type="checkbox"] {
+                    width: 20px;
+                    height: 20px;
+                    cursor: pointer;
+                    position: relative;
+                    -webkit-appearance: none;
+                    -moz-appearance: none;
+                    appearance: none;
+                    border: 2px solid #d0d0d0;
+                    border-radius: 4px;
+                    background-color: white;
+                    transition: all 0.2s ease;
+                }
+                .gr-dataframe input[type="checkbox"]:checked {
+                    border-color: #1a73e8;
+                    background-color: #1a73e8;
+                }
+                .gr-dataframe input[type="checkbox"]:checked::after {
+                    content: '✓';
+                    position: absolute;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                }
+                .gr-dataframe input[type="checkbox"]:hover:not(:checked) {
+                    border-color: #a0a0a0;
+                }
+                .gr-dataframe input[type="checkbox"]:focus {
+                    outline: none;
+                    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
                 }
                 .result-title-link {
                     color: #1a73e8;
                     text-decoration: none;
                     transition: color 0.2s ease;
+                    font-weight: 600;
                 }
                 .result-title-link:hover {
                     color: #1967d2;
                     text-decoration: underline;
                 }
-                .result-title-link::after {
-                    content: " ↗";
-                    font-size: 0.8em;
-                    color: #666;
-                }
-                .search-card-snippet {
-                    color: #333;
-                    font-size: 0.95em;
-                    line-height: 1.5;
-                    margin-bottom: 10px;
-                }
-                .search-card-url {
-                    font-size: 0.85em;
-                }
-                .result-url {
-                    color: #0d6628;
+                .view-original-btn {
+                    display: inline-block;
+                    padding: 4px 8px;
+                    background-color: #f0f7ff;
+                    color: #1a73e8;
+                    border-radius: 4px;
                     text-decoration: none;
-                    transition: color 0.2s ease;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
                 }
-                .result-url:hover {
-                    color: #0a5120;
-                    text-decoration: underline;
+                .view-original-btn:hover {
+                    background-color: #e1f0fe;
+                    color: #1967d2;
+                    text-decoration: none;
                 }
-                .result-url::after {
-                    content: " ↗";
-                    font-size: 0.8em;
+                .no-url {
+                    color: #999;
+                    font-size: 0.9em;
                 }
                 .no-results {
                     text-align: center;
@@ -786,27 +753,21 @@ def create_app():
                     color: #dc3545;
                     font-size: 1.1em;
                 }
-                #summary-buttons-row {
+                #summarize-deepseek-btn {
                     margin-top: 10px;
                     margin-bottom: 10px;
-                    display: flex;
-                    justify-content: center;
-                    gap: 10px;
+                    width: 100%;
                 }
                 #summary-output {
                     width: 100%;
                     border-radius: 8px;
                     border: 1px solid #e0e0e0;
                     background-color: white;
+                    margin-top: 10px;
                 }
                 #download-btn {
                     margin-top: 10px;
                     width: 100%;
-                }
-                .result-checkbox {
-                    width: 18px;
-                    height: 18px;
-                    cursor: pointer;
                 }
                 
                 /* 分页控件样式 */
@@ -839,7 +800,7 @@ def create_app():
                 }
                 
                 @media (max-width: 768px) {
-                    #search-row, #summary-buttons-row {
+                    #search-row {
                         flex-direction: column;
                         align-items: stretch;
                     }
@@ -847,7 +808,7 @@ def create_app():
                         margin-right: 0;
                         margin-bottom: 10px;
                     }
-                    #search-btn, #summarize-local-btn, #summarize-deepseek-btn {
+                    #search-btn {
                         width: 100%;
                         margin-left: 0;
                         margin-bottom: 5px;
@@ -858,9 +819,11 @@ def create_app():
                     }
                 }
             `;
-           document.head.appendChild(style);
-    }""")
-    return demo
+            document.head.appendChild(style);
+        }}""");
+        
+        return demo
+
 if __name__ == "__main__":
     demo = create_app()
     demo.launch(server_name="0.0.0.0", server_port=7860)

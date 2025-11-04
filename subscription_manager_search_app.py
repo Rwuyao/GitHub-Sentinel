@@ -11,6 +11,7 @@ import json
 import requests
 from datetime import datetime
 from typing import Dict, Optional, List, Union
+import io
 
 # 导入百度百度搜索模块
 from search.baidu_search import BaiduQianfanSearch, initialize_searcher, search_function, fetch_page_content
@@ -66,6 +67,7 @@ mock_results = [
         "content": "随着全球对气候变化的关注日益增加，可再生能源的发展成为实现碳中和目标的关键。太阳能、风能、水能、生物质能等可再生能源技术不断进步，成本持续下降。近年来，全球可再生能源装机容量快速增长，特别是太阳能和风能。储能技术的发展也为可再生能源的间歇性问题提供了解决方案。智能电网和能源互联网技术的应用，提高了能源系统的效率和灵活性。然而，可再生能源的大规模发展仍面临着电网基础设施升级、能源存储成本、政策支持等挑战。未来，可再生能源有望成为全球能源结构的主体，推动能源转型和可持续发展。"
     }
 ]
+
 def call_deepseek_api(messages):
     """调用DeepSeek大模型API"""
     if not DEEPSEEK_API_KEY:
@@ -112,7 +114,6 @@ def call_deepseek_api(messages):
         return error_msg
     except Exception as e:
         return f"❌ DeepSeek API调用异常: {e}"
-
 def summarize_with_deepseek(table_data):
     """使用DeepSeek大模型总结选中的内容"""
     global global_state
@@ -254,7 +255,23 @@ def download_summary(selected_results, content):
         title = "搜索结果总结"
     
     markdown_content = download_markdown(title, content)
-    return gr.File.update(value=markdown_content, visible=True, label="下载总结文件")
+    
+      # 使用临时文件保存内容
+    import tempfile
+    import os
+    try:
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+            f.write(markdown_content)
+            temp_file_path = f.name 
+    
+        print(f"📁 文件已保存到: {temp_file_path}")
+        return gr.File(value=temp_file_path, visible=True, label="下载总结文件")  
+    except Exception as e:
+        print(f"❌ 创建临时文件失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return gr.File(visible=False)
 
 def format_results_for_page(page_num):
     """格式化指定页的结果为Gradio表格所需格式"""
@@ -418,12 +435,14 @@ def download_current_summary():
     
     try:
         if not global_state["selected_results"] or not global_state["summary_output"]:
-            return gr.update(visible=False)
+            return gr.File(visible=False)
         
         return download_summary(global_state["selected_results"], global_state["summary_output"])
     except Exception as e:
         print(f"❌ 下载过程中出现错误: {e}")
-        return gr.update(visible=False)
+        import traceback
+        traceback.print_exc()
+        return gr.File(visible=False)
 
 def get_api_status():
     """获取API状态信息"""
@@ -484,7 +503,7 @@ def create_app():
                     elem_id="search-results",
                     visible=False,
                     interactive=True,
-                    wrap=True
+                    wrap=True,
                 )
                 
                 # 分页控制 - 默认隐藏
